@@ -1,0 +1,1 @@
+in this folder we can put textures . kellet tegyek ilyen txt fajlt mert nem mentette el a resources folders
