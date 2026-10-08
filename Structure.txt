@@ -1,0 +1,6 @@
+src az a source code , ott betettem a maint es a Database folderbe tettem egy DB_Maint 
+ugy gondoltam hogy igy jobb mivel a DB_Mainbe ugy mukodne mint egy Main de csak a Database
+
+az src mellet ott van a Resources , abba texture fajl , ott meg majd a texture es mas egyebb esztetikai vagy kep or whatever you need can be 
+
+(reminder for me to have a .log file  ide irom me jol tud jonni debugging kor , date time)
