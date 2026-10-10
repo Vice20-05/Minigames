@@ -9,9 +9,10 @@ Status: planning phase, no code yet.
 - Until the art is ready I'll use placeholder shapes (colored boxes). Each object just has an image path, so your art gets dropped in later without changing any logic.
 
 ## Build order
-1. Game logic / object model first (cars, tanks, bullets, walls, collisions)
+1. Game logic / object model first (cars, tanks, bullets, walls, collisions )
 2. Rendering with placeholders
 3. Database last (it's small)
+    4.Art , the phase of overwriting the placeholders 
 
 ---
 
@@ -23,7 +24,8 @@ Teacher-approved: 2D only, top-down view, no 3D.
 **How it works**
 - The car stays near the bottom of the screen; the road scrolls underneath to create the feeling of speed.
 - Left/right to change lanes, player controls their own speed (throttle/brake).
-- Traffic is **not AI** – cars just spawn in random lanes on a pattern and move down the screen.
+- Traffic is **not AI** – cars just spawn in random lanes on a pattern and move down the screen
+    -The player using W accelerates the car, s is for brake 
 
 **Scoring**
 - Points over time, multiplied by speed (e.g. 1.5x at 100 km/h, 2x at 200 km/h, capped).
