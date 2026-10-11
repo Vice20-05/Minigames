@@ -1,0 +1,344 @@
+=====================================================================
+                 F1 MINIGAME - BASE STRUCTURE - GUIDE
+                        (written for Victor)
+=====================================================================
+
+Hi Victor! This file explains the starting code for Game 1 from
+minigames-plan.md (the top-down traffic racer). Read it from top to
+bottom one time. After that you can use it to look things up.
+
+CONTENTS
+  1. What is this?
+  2. How to run the game
+  3. Controls
+  4. The files (what each class does)
+  5. How the game loop works (the most important part!)
+  6. The coordinate system (where is x / y?)
+  7. How scrolling and speed work
+  8. How to change things (settings)
+  9. How to add real art (pictures) later
+ 10. Next steps - what YOU can add (with hints)
+ 11. Common errors and how to fix them
+ 12. Small Java glossary
+
+
+---------------------------------------------------------------------
+1. WHAT IS THIS?
+---------------------------------------------------------------------
+A small but WORKING game made with Java Swing (the built-in Java
+library for windows and drawing). Right now you can:
+
+  - drive a red car (placeholder box) on a 4-lane road
+  - speed up, brake and change lanes
+  - see the road scroll faster the faster you drive
+  - dodge traffic cars that spawn in random lanes
+  - get points over time (more points when you go faster)
+  - crash, see your score, and press R to restart
+
+Everything is a colored rectangle for now. That is on purpose: the
+plan says "logic first, art last". Every object already has a spot
+for an image path, so pictures can be added later without changing
+the logic (see section 9).
+
+
+---------------------------------------------------------------------
+2. HOW TO RUN THE GAME
+---------------------------------------------------------------------
+The class with the main() method is:   GameWindow.java
+
+All the files start with the line:     package f1_game.base;
+That means Java expects them inside the folder  src/f1_game/base/
+and that  "src"  is the SOURCE ROOT (the top folder of the code).
+
+--- Option A: IntelliJ IDEA (easiest) ---
+  1. File -> Open -> choose the "Minigames" folder.
+  2. Right-click the "src" folder -> Mark Directory as -> Sources Root
+     (it turns blue). Skip this if it is already blue.
+  3. Open src/f1_game/base/GameWindow.java
+  4. Click the green play button next to "public static void main".
+
+--- Option B: VS Code ---
+  1. Install the "Extension Pack for Java".
+  2. Open the "Minigames" folder.
+  3. Open GameWindow.java and click "Run" above the main method.
+
+--- Option C: Command line (terminal) ---
+  Go into the Minigames folder (the one that contains "src"), then:
+
+     javac -d out src/f1_game/base/*.java
+     java -cp out f1_game.base.GameWindow
+
+  Line 1 compiles (javac = Java compiler). "-d out" puts the compiled
+         .class files into a folder called "out".
+  Line 2 runs it. "-cp out" says "look for classes in out".
+  (The "out" folder is in .gitignore, so it won't be pushed to GitHub.)
+
+You need Java 17 or newer (we use the new "switch with ->" style).
+
+
+---------------------------------------------------------------------
+3. CONTROLS
+---------------------------------------------------------------------
+  W  or  Up arrow      accelerate
+  S  or  Down arrow    brake
+  A  or  Left arrow    one lane to the left
+  D  or  Right arrow   one lane to the right
+  R                    restart (only after a crash)
+
+
+---------------------------------------------------------------------
+4. THE FILES (what each class does)
+---------------------------------------------------------------------
+All in  src/f1_game/base/
+
+  GameWindow.java     The window (JFrame). Has main(). START HERE.
+        |
+        v
+  GamePanel.java      The heart: the game loop, updating and drawing.
+        |             It owns all the objects below.
+        |
+        +-- KeyHandler.java      Remembers which keys are held down.
+        +-- Road.java            Draws grass, asphalt, scrolling lines.
+        +-- PlayerCar.java       Your car (speed + lanes).
+        +-- TrafficCar.java      One traffic car.
+        +-- TrafficSpawner.java  Decides when/where new traffic appears.
+
+  GameObject.java     The PARENT class of PlayerCar and TrafficCar.
+                      Holds position, size, color, image, and draws it.
+                      (PlayerCar "extends" GameObject = inheritance)
+
+  GameConfig.java     All the numbers (window size, speeds, lanes...)
+                      in one place.
+
+The rule we follow: ONE class = ONE job. If something is wrong with
+the lane lines, you know to look in Road.java. If the car brakes too
+slowly, you look in GameConfig.java (BRAKE_POWER).
+
+
+---------------------------------------------------------------------
+5. HOW THE GAME LOOP WORKS (the most important part!)
+---------------------------------------------------------------------
+A game is like a flip-book. 60 times every second we:
+
+      +-----------------------------------------------+
+      |  Timer "ticks" (every ~16 ms)                 |
+      |        |                                      |
+      |        v                                      |
+      |  actionPerformed()                            |
+      |        |                                      |
+      |        +--> updateGame()   1) MOVE everything |
+      |        |                                      |
+      |        +--> repaint()      2) DRAW everything |
+      |                 |          (Swing then calls  |
+      |                 |           paintComponent)   |
+      |                 v                             |
+      |  wait for the next tick and do it again...    |
+      +-----------------------------------------------+
+
+What happens in updateGame() (GamePanel.java), in this order:
+  1. player.update(keys)     read the keyboard, change speed and lane
+  2. road.update(...)        move the lane lines (scrolling)
+  3. spawner.update(...)     maybe add a new traffic car
+  4. car.update(...)         move every traffic car
+  5. removeIf(isOffScreen)   delete cars that left the screen
+  6. checkCollisions()       did we hit something? -> game over
+  7. updateScore()           add points
+
+What happens in paintComponent() - ORDER MATTERS, like painting on a
+real canvas: whatever you paint LAST ends up ON TOP.
+  1. road        (back)
+  2. traffic cars
+  3. player car
+  4. HUD text    (front)
+  5. game over screen (only if you crashed)
+
+Golden rule: update() only CHANGES numbers, draw() only PAINTS them.
+Don't move things inside draw(), and don't draw inside update().
+
+
+---------------------------------------------------------------------
+6. THE COORDINATE SYSTEM (where is x / y?)
+---------------------------------------------------------------------
+In Swing, (0, 0) is the TOP-LEFT corner, and y goes DOWN.
+(It is the other way around from maths class!)
+
+     (0,0) ------------------------> x  (480)
+       |
+       |        +----+   <- (x, y) of an object is ITS top-left corner
+       |        |car |
+       |        +----+
+       |
+       v
+       y (720)
+
+So:  y gets BIGGER  -> the object moves DOWN the screen
+     y gets SMALLER -> the object moves UP
+     a negative y   -> the object is above the screen (hidden)
+
+That's why new traffic starts at y = -CAR_HEIGHT: it begins just
+above the top edge, so it "drives into" the screen.
+
+Lanes are numbered from the left: 0, 1, 2, 3.
+Road.laneCenterX(lane) tells you the x of the middle of a lane.
+
+
+---------------------------------------------------------------------
+7. HOW SCROLLING AND SPEED WORK
+---------------------------------------------------------------------
+The player car NEVER moves up the screen. Its y stays the same.
+The trick: the WORLD moves down instead.
+
+  - Lane lines move down by:   playerSpeed * PIXELS_PER_KMH
+    Example: 200 km/h * 0.08 = 16 pixels every frame.
+
+  - Traffic cars move by the DIFFERENCE in speed:
+        (playerSpeed - trafficSpeed) * PIXELS_PER_KMH
+    You at 200, them at 80  -> +9.6 px -> they come DOWN towards you.
+    You at 50,  them at 80  -> -2.4 px -> they drive UP and away.
+
+  - Score per frame = (POINTS_PER_SECOND / FPS) * multiplier
+    multiplier = 1 + speed / 200, but never more than MAX_MULTIPLIER
+       0 km/h -> x1.0      100 km/h -> x1.5      200 km/h -> x2.0
+
+
+---------------------------------------------------------------------
+8. HOW TO CHANGE THINGS (settings)
+---------------------------------------------------------------------
+Open GameConfig.java. Change a number, run the game again. Try:
+
+  MAX_SPEED          = 400     -> higher top speed
+  ACCELERATION       = 2.0     -> faster acceleration
+  LANE_COUNT         = 3       -> 3 lanes (ROAD_WIDTH 300 looks better then)
+  SPAWN_EVERY_TICKS  = 20      -> MUCH more traffic
+  PIXELS_PER_KMH     = 0.12    -> the game feels faster
+
+Changing numbers and watching what happens is the BEST way to learn
+how the code works. You can always change it back.
+
+
+---------------------------------------------------------------------
+9. HOW TO ADD REAL ART (pictures) LATER
+---------------------------------------------------------------------
+Every GameObject takes an "imagePath" in its constructor. Right now we
+pass null, so it draws a colored box. To use a picture:
+
+  1. Put the picture in  Resorces/Textures/   for example player.png
+     (Use PNG with a transparent background. Draw the car facing UP.)
+  2. In PlayerCar.java find this line in the constructor:
+        super(0, GameConfig.PLAYER_Y, ..., Color.RED, null);
+     and change  null  to  "Resorces/Textures/player.png"
+  3. Run the game. Done! The picture is stretched to the car size
+     (CAR_WIDTH x CAR_HEIGHT = 50 x 90), so draw it in that shape.
+
+Same for TrafficCar.java (the null at the end of its super(...) call).
+
+If the file can't be found, the game does NOT crash: it prints
+"Could not load image: ..." in the console and keeps the colored box.
+Note: the path is relative to the folder you RUN the game from
+(the Minigames folder).
+
+
+---------------------------------------------------------------------
+10. NEXT STEPS - WHAT YOU CAN ADD (with hints)
+---------------------------------------------------------------------
+These are all from minigames-plan.md. Do them one at a time, and run
+the game after every small change. Easiest first.
+
+[ ] 1. NEAR-MISS BONUS
+    PlayerCar already has getNearMissBounds() (a slightly bigger box).
+    Hint:
+      - In TrafficCar add:  private boolean nearMissCounted = false;
+        plus a getter and a setter.
+      - In GamePanel.checkCollisions(), for every car:
+          if it touches getNearMissBounds()
+          AND it does NOT touch getBounds()
+          AND nearMissCounted is false
+          -> score += 50;  and set nearMissCounted = true
+        (The flag stops you getting 50 points EVERY frame.)
+
+[ ] 2. OVERTAKE BONUS
+    A car is overtaken when it goes from ABOVE the player to BELOW the
+    player. Hint: in TrafficCar add a boolean "overtaken". In GamePanel,
+    if car.getY() > player.getY() + CAR_HEIGHT and not overtaken yet
+    -> add points and mark it.
+
+[ ] 3. HIGH SCORE ON THE GAME OVER SCREEN
+    Add  private double bestScore;  in GamePanel. When you crash:
+    if (score > bestScore) bestScore = score;  then draw it.
+    (Later this goes into the database!)
+
+[ ] 4. DIFFICULTY PHASES (traffic gets denser every ~30 s)
+    We already count frames in "ticks". Seconds = ticks / GameConfig.FPS.
+    Hint: give TrafficSpawner an update(traffic, seconds) parameter and
+    make the spawn delay smaller as time goes on, e.g.
+        int delay = 45 - (seconds / 30) * 5;
+        if (delay < 15) delay = 15;     // the CAP from the plan
+    The "never block all lanes" rule is already there.
+
+[ ] 5. ROADBLOCKS / POTHOLES after ~2 minutes
+    Make a new class  Obstacle extends GameObject  (copy TrafficCar as
+    a start). Obstacles don't drive, so their speed is 0:
+        y += playerSpeed * PIXELS_PER_KMH;
+    Keep a  List<Obstacle>  in GamePanel and treat it like traffic.
+
+[ ] 6. A PAUSE BUTTON (P)
+    Add VK_P to KeyHandler, add  boolean paused  to GamePanel, and at
+    the start of updateGame():  if (paused) return;
+    (Careful: same "only on the first frame" problem as lane changes.)
+
+[ ] 7. CONNECT TO THE MAIN MENU
+    From src/Main.java (or f1Main.java) you can start the game with:
+        new f1_game.base.GameWindow();
+    Note: f1Main.java has no "package" line yet. When we build the
+    menu, we should give it  package f1_game;  so it matches its folder.
+    Also change EXIT_ON_CLOSE to DISPOSE_ON_CLOSE in GameWindow then,
+    so closing the game does not close the whole menu.
+
+
+---------------------------------------------------------------------
+11. COMMON ERRORS AND HOW TO FIX THEM
+---------------------------------------------------------------------
+"The keys don't do anything!"
+   -> Click inside the game window once. The panel needs FOCUS to get
+      key presses. (GamePanel calls requestFocusInWindow() for this.)
+
+"error: cannot find symbol"
+   -> A typo, or you used a class/variable that doesn't exist. Java is
+      CASE SENSITIVE: speed and Speed are different things.
+
+"Could not find or load main class"
+   -> Run it from the Minigames folder, and use the FULL name with the
+      package:  java -cp out f1_game.base.GameWindow
+
+"package f1_game.base does not exist" / red package line in IntelliJ
+   -> "src" is not marked as Sources Root (see section 2, option A).
+
+The car flies through the lanes when I hold A
+   -> You removed the leftWasPressed / rightWasPressed check.
+
+Things flicker
+   -> Only draw inside paintComponent(), never somewhere else.
+
+
+---------------------------------------------------------------------
+12. SMALL JAVA GLOSSARY
+---------------------------------------------------------------------
+class        A blueprint. "PlayerCar" describes what every player car is.
+object       A real thing made from the blueprint:  new PlayerCar()
+extends      Inheritance: "PlayerCar extends GameObject" = a PlayerCar IS
+             a GameObject, and gets all its variables and methods.
+super(...)   Calls the constructor of the parent class.
+@Override    "I'm replacing a method that the parent already has."
+private      Only THIS class can use it.
+protected    This class AND its children can use it.
+public       Everybody can use it.
+static       Belongs to the class, not to one object (GameConfig.FPS).
+final        Can't be changed after it is set.
+List<T>      A list that can grow/shrink:  ArrayList<TrafficCar>
+JFrame       A window.
+JPanel       A rectangle inside a window that you can draw on.
+Graphics2D   The "pen" you draw with:  g.setColor(...), g.fillRect(...)
+Timer        Calls a method again and again (our game loop).
+Rectangle    A box. box1.intersects(box2) = do they overlap? (collision)
+
+Good luck, and have fun with it!
