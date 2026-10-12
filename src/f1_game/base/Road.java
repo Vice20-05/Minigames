@@ -33,8 +33,8 @@ public class Road {
     
     
     public Road(){
-        backgroundImage=loadImage("Resources/Textures/f1game_grass_background/background.png");
-        roadImage=loadImage("Resources/Textures/f1game_grass_background/road.png");
+        backgroundImage=loadImage("Resorces/Textures/f1game_grass_background/background.png");
+        roadImage=loadImage("Resorces/Textures/f1game_grass_background/road.png");
     }
     
     /**
