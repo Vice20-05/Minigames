@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch F1 game",
+            "request": "launch",
+            "mainClass": "f1_game.f1Main",
+            "classPaths": [
+                "${workspaceFolder}/src"
+            ],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

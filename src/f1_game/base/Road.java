@@ -3,6 +3,10 @@ package f1_game.base;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
 
 /**
  * Road = draws the grass, the asphalt and the white lane lines.
@@ -19,7 +23,7 @@ public class Road {
     private static final int DASH_PERIOD = DASH_LENGTH + DASH_GAP;
 
     private  final BufferedImage backgroundImage;
-    private  final BufferedImage road; 
+    private final BufferedImage roadImage;
 
     // How far the lines have moved. It always stays between 0 and DASH_PERIOD,
     // because after one full dash+gap the picture looks exactly the same again.
@@ -39,25 +43,37 @@ public class Road {
      */
     public void update(double pixels) {
         scrollOffset = (scrollOffset + pixels) % DASH_PERIOD;
+
+        if (roadImage != null) {
+            roadImageOffset = (roadImageOffset + pixels) % roadImage.getHeight();
+        }
     }
 
     
 
     public void draw(Graphics2D g) {
-        // 1) Grass = the whole background
-        g.setColor(new Color(40, 140, 60));
-        g.fillRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
+         // 1) Background (grass) - does NOT scroll
+        if (backgroundImage != null) {
+            g.drawImage(backgroundImage, 0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT, null);
+        } else {
+            g.setColor(new Color(40, 140, 60));
+            g.fillRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
+        }
 
-        // 2) Asphalt
-        g.setColor(new Color(60, 60, 60));
-        g.fillRect(GameConfig.ROAD_X, 0, GameConfig.ROAD_WIDTH, GameConfig.WINDOW_HEIGHT);
+        // 2) Asphalt - DOES scroll
+        if (roadImage != null) {
+            drawScrollingRoadImage(g);
+        } else {
+            g.setColor(new Color(60, 60, 60));
+            g.fillRect(GameConfig.ROAD_X, 0, GameConfig.ROAD_WIDTH, GameConfig.WINDOW_HEIGHT);
+        }
 
         // 3) Solid white lines on the left and right edge of the road
         g.setColor(Color.WHITE);
         g.fillRect(GameConfig.ROAD_X, 0, 4, GameConfig.WINDOW_HEIGHT);
         g.fillRect(GameConfig.ROAD_X + GameConfig.ROAD_WIDTH - 4, 0, 4, GameConfig.WINDOW_HEIGHT);
 
-        // 4) Dashed lines between the lanes (these are the ones that scroll)
+        // 4) Dashed lines between the lanes (these scroll too)
         for (int lane = 1; lane < GameConfig.LANE_COUNT; lane++) {
             int lineX = GameConfig.ROAD_X + lane * GameConfig.LANE_WIDTH - 2;
 
@@ -68,6 +84,25 @@ public class Road {
         }
     }
 
+
+        private void drawScrollingRoadImage(Graphics2D g) {
+        int imageHeight = roadImage.getHeight();
+        int startY = (int) roadImageOffset - imageHeight;
+
+        for (int y = startY; y < GameConfig.WINDOW_HEIGHT; y += imageHeight) {
+            g.drawImage(roadImage, GameConfig.ROAD_X, y, GameConfig.ROAD_WIDTH, imageHeight, null);
+        }
+    }
+
+
+      private BufferedImage loadImage(String imagePath) {
+        try {
+            return ImageIO.read(new File(imagePath));
+        } catch (IOException e) {
+            System.out.println("Could not load image: " + imagePath + " -> using a color instead");
+            return null;
+        }
+    }
     /**
      * Helper: gives back the x coordinate of the MIDDLE of a lane.
      * Lanes are numbered from the left: 0, 1, 2, 3.

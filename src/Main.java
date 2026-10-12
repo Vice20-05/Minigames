@@ -1,7 +1,9 @@
 
 
-public  class  Main{
+import f1_game.f1Main;
+
+public class Main {
     public static void main(String[] args) {
-        
+        f1Main.main(args); //my part 
     }
 }
