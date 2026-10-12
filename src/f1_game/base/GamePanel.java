@@ -1,0 +1,231 @@
+package f1_game.base;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.JPanel;
+import javax.swing.Timer;
+
+/**
+ * GamePanel = the HEART of the game. It is the "canvas" inside the window.
+ *
+ * It does 2 jobs, 60 times per second (this is the GAME LOOP):
+ *   1) UPDATE -> move everything, check crashes, add score   (updateGame)
+ *   2) DRAW   -> paint everything on the screen               (paintComponent)
+ *
+ * We use ONE javax.swing.Timer for the loop (the plan says: one timer drives everything).
+ * Every TICK_MS milliseconds the Timer calls actionPerformed(...).
+ */
+public class GamePanel extends JPanel implements ActionListener {
+
+    private final Timer timer;
+    private final KeyHandler keys = new KeyHandler();
+
+    // Everything that lives in the game:
+    private Road road;
+    private PlayerCar player;
+    private List<TrafficCar> traffic;
+    private TrafficSpawner spawner;
+
+    private double baseScore;  // points from time only, WITHOUT the multiplier (see getScore)
+    private int ticks;         // how many frames since the start (ticks / FPS = seconds)
+    private boolean gameOver;
+
+    public GamePanel() {
+        setPreferredSize(new Dimension(GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT));
+        setBackground(Color.BLACK);
+        setDoubleBuffered(true);  // draws to a hidden image first -> no flickering
+        setFocusable(true);       // the panel must have "focus" to receive key presses
+        addKeyListener(keys);
+
+        resetGame();
+
+        // "this" = this GamePanel is the ActionListener, so the Timer calls our actionPerformed.
+        timer = new Timer(GameConfig.TICK_MS, this);
+    }
+
+    /** Starts the game loop. Called by GameWindow after the window is visible. */
+    public void start() {
+        requestFocusInWindow(); // ask for keyboard focus
+        timer.start();
+    }
+
+    /** Stops the game loop when the containing window is closed. */
+    public void stop() {
+        timer.stop();
+    }
+
+    /** Puts everything back to the beginning (used at start and after a crash). */
+    private void resetGame() {
+        road = new Road();
+        player = new PlayerCar();
+        traffic = new ArrayList<>();
+        spawner = new TrafficSpawner();
+        baseScore = 0;
+        ticks = 0;
+        gameOver = false;
+    }
+
+    /** The Timer calls this 60 times per second. */
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        updateGame();
+        repaint(); // tells Swing "please call paintComponent soon"
+    }
+
+    // =====================================================================
+    //  1) UPDATE
+    // =====================================================================
+    private void updateGame() {
+        if (gameOver) {
+            if (keys.isRestartPressed()) {
+                resetGame();
+            }
+            return; // when the game is over, nothing moves
+        }
+
+        ticks++;
+
+        // Move the player (reads the keyboard)
+        player.update(keys);
+
+        // Scroll the road based on the player's speed
+        road.update(player.getSpeed() * GameConfig.PIXELS_PER_KMH);
+
+        // Maybe add a new traffic car
+        spawner.update(traffic);
+
+        // Move every traffic car
+        for (TrafficCar car : traffic) {
+            car.update(player.getSpeed());
+        }
+
+        // Delete cars that left the screen ("removeIf" = remove every car where the test is true)
+        traffic.removeIf(TrafficCar::isOffScreen);
+
+        checkCollisions();
+        updateScore();
+    }
+
+    private void checkCollisions() {
+        for (TrafficCar car : traffic) {
+            // intersects = do the two invisible boxes overlap
+            if (player.getBounds().intersects(car.getBounds())) {
+                gameOver = true;
+                return;
+            }
+        }
+        // to do  (Victor: near-miss bonus -> see Victor.txt, Next steps
+    }
+
+    private void updateScore() {
+        double pointsThisFrame = GameConfig.POINTS_PER_SECOND / GameConfig.FPS;
+        baseScore += pointsThisFrame;
+    }
+
+    /**
+     * The score you see = base points x the multiplier RIGHT NOW.
+     * Example: 10 base points at x2.0 -> 20. Brake back to x1.0 -> 10 again.
+     * After a crash nothing moves anymore, so the multiplier at the crash is the final one.
+     */
+    private double getScore() {
+        return baseScore * getMultiplier();
+    }
+
+    /**
+     * Faster = more points. 0 km/h -> x1.0, 100 km/h -> x1.5, 200 km/h -> x2.0,
+     * and it stops at MAX_MULTIPLIER.
+     */
+    private double getMultiplier() {
+        double multiplier = 1.0 + player.getSpeed() / 200.0;
+        return Math.min(multiplier, GameConfig.MAX_MULTIPLIER);
+    }
+
+    // =====================================================================
+    //  2) DRAW
+    // =====================================================================
+
+    /**
+     * Swing calls this every time the panel needs to be painted.
+     * NEVER call it yourself, call repaint() instead.
+     * ORDER MATTERS: what you draw first is in the back, what you draw last is on top.
+     */
+    @Override
+    protected void paintComponent(Graphics graphics) {
+        super.paintComponent(graphics); // clears the old frame
+        Graphics2D g = (Graphics2D) graphics; // Graphics2D has more features than Graphics
+
+        // Smooth edges on shapes and text, and smooth pictures when they are scaled
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+        // FULLSCREEN / RESIZING:
+        // The game is always WINDOW_WIDTH x WINDOW_HEIGHT "game pixels". If the panel is bigger
+        // (fullscreen), we make the game bigger by "scale" so it fills the height, and move it
+        // to the middle by "offsetX"/"offsetY". The extra space on the sides gets the background.
+        double scale = Math.min((double) getWidth() / GameConfig.WINDOW_WIDTH,
+                                (double) getHeight() / GameConfig.WINDOW_HEIGHT);
+        double offsetX = (getWidth() - GameConfig.WINDOW_WIDTH * scale) / 2;
+        double offsetY = (getHeight() - GameConfig.WINDOW_HEIGHT * scale) / 2;
+
+        int roadLeftX = (int) Math.round(offsetX + GameConfig.ROAD_X * scale);
+        int roadRightX = (int) Math.round(offsetX + (GameConfig.ROAD_X + GameConfig.ROAD_WIDTH) * scale);
+        int tileSize = Math.max(1, (int) Math.round(GameConfig.BACKGROUND_TILE_SIZE * scale));
+        road.drawBackground(g, getWidth(), getHeight(), roadLeftX, roadRightX, tileSize); // very back
+
+        // From here on we draw in GAME pixels: move + zoom the "pen", and don't draw outside the game.
+        g.translate(offsetX, offsetY);
+        g.scale(scale, scale);
+        g.clipRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
+
+        road.draw(g);               // back
+        for (TrafficCar car : traffic) {
+            car.draw(g);
+        }
+        player.draw(g);
+        drawHud(g);                 // front
+        if (gameOver) {
+            drawGameOver(g);
+        }
+    }
+
+    /** HUD = the text on top of the game (speed, score, time). */
+    private void drawHud(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 150)); // black, half transparent
+        g.fillRect(0, 0, GameConfig.WINDOW_WIDTH, 40);
+
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("Speed: " + (int) player.getSpeed() + " km/h", 10, 26);
+        g.drawString("Score: " + (int) getScore(), 190, 26);
+        g.drawString(String.format("x%.1f", getMultiplier()), 300, 26);
+        g.drawString("Time: " + (ticks / GameConfig.FPS) + "s", 380, 26);
+    }
+
+    private void drawGameOver(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 180));
+        g.fillRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
+
+        g.setColor(Color.RED);
+        g.setFont(new Font("Arial", Font.BOLD, 48));
+        drawCentered(g, "CRASH!", GameConfig.WINDOW_HEIGHT / 2 - 40);
+
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.PLAIN, 22));
+        drawCentered(g, "Score: " + (int) getScore(), GameConfig.WINDOW_HEIGHT / 2 + 10);
+        drawCentered(g, "Press R to restart", GameConfig.WINDOW_HEIGHT / 2 + 50);
+    }
+
+    /** Draws text in the horizontal middle of the window. */
+    private void drawCentered(Graphics2D g, String text, int y) {
+        int textWidth = g.getFontMetrics().stringWidth(text);
+        g.drawString(text, (GameConfig.WINDOW_WIDTH - textWidth) / 2, y);
+    }
+}
