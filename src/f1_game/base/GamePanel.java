@@ -34,7 +34,7 @@ public class GamePanel extends JPanel implements ActionListener {
     private List<TrafficCar> traffic;
     private TrafficSpawner spawner;
 
-    private double score;
+    private double baseScore;  // points from time only, WITHOUT the multiplier (see getScore)
     private int ticks;         // how many frames since the start (ticks / FPS = seconds)
     private boolean gameOver;
 
@@ -68,7 +68,7 @@ public class GamePanel extends JPanel implements ActionListener {
         player = new PlayerCar();
         traffic = new ArrayList<>();
         spawner = new TrafficSpawner();
-        score = 0;
+        baseScore = 0;
         ticks = 0;
         gameOver = false;
     }
@@ -127,7 +127,16 @@ public class GamePanel extends JPanel implements ActionListener {
 
     private void updateScore() {
         double pointsThisFrame = GameConfig.POINTS_PER_SECOND / GameConfig.FPS;
-        score += pointsThisFrame * getMultiplier();
+        baseScore += pointsThisFrame;
+    }
+
+    /**
+     * The score you see = base points x the multiplier RIGHT NOW.
+     * Example: 10 base points at x2.0 -> 20. Brake back to x1.0 -> 10 again.
+     * After a crash nothing moves anymore, so the multiplier at the crash is the final one.
+     */
+    private double getScore() {
+        return baseScore * getMultiplier();
     }
 
     /**
@@ -153,8 +162,28 @@ public class GamePanel extends JPanel implements ActionListener {
         super.paintComponent(graphics); // clears the old frame
         Graphics2D g = (Graphics2D) graphics; // Graphics2D has more features than Graphics
 
-        // Smooth edges on shapes and text
+        // Smooth edges on shapes and text, and smooth pictures when they are scaled
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+        // FULLSCREEN / RESIZING:
+        // The game is always WINDOW_WIDTH x WINDOW_HEIGHT "game pixels". If the panel is bigger
+        // (fullscreen), we make the game bigger by "scale" so it fills the height, and move it
+        // to the middle by "offsetX"/"offsetY". The extra space on the sides gets the background.
+        double scale = Math.min((double) getWidth() / GameConfig.WINDOW_WIDTH,
+                                (double) getHeight() / GameConfig.WINDOW_HEIGHT);
+        double offsetX = (getWidth() - GameConfig.WINDOW_WIDTH * scale) / 2;
+        double offsetY = (getHeight() - GameConfig.WINDOW_HEIGHT * scale) / 2;
+
+        int roadLeftX = (int) Math.round(offsetX + GameConfig.ROAD_X * scale);
+        int roadRightX = (int) Math.round(offsetX + (GameConfig.ROAD_X + GameConfig.ROAD_WIDTH) * scale);
+        int tileSize = Math.max(1, (int) Math.round(GameConfig.BACKGROUND_TILE_SIZE * scale));
+        road.drawBackground(g, getWidth(), getHeight(), roadLeftX, roadRightX, tileSize); // very back
+
+        // From here on we draw in GAME pixels: move + zoom the "pen", and don't draw outside the game.
+        g.translate(offsetX, offsetY);
+        g.scale(scale, scale);
+        g.clipRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
 
         road.draw(g);               // back
         for (TrafficCar car : traffic) {
@@ -175,7 +204,7 @@ public class GamePanel extends JPanel implements ActionListener {
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.BOLD, 16));
         g.drawString("Speed: " + (int) player.getSpeed() + " km/h", 10, 26);
-        g.drawString("Score: " + (int) score, 190, 26);
+        g.drawString("Score: " + (int) getScore(), 190, 26);
         g.drawString(String.format("x%.1f", getMultiplier()), 300, 26);
         g.drawString("Time: " + (ticks / GameConfig.FPS) + "s", 380, 26);
     }
@@ -190,7 +219,7 @@ public class GamePanel extends JPanel implements ActionListener {
 
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.PLAIN, 22));
-        drawCentered(g, "Score: " + (int) score, GameConfig.WINDOW_HEIGHT / 2 + 10);
+        drawCentered(g, "Score: " + (int) getScore(), GameConfig.WINDOW_HEIGHT / 2 + 10);
         drawCentered(g, "Press R to restart", GameConfig.WINDOW_HEIGHT / 2 + 50);
     }
 

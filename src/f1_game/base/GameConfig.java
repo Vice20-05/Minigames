@@ -30,13 +30,19 @@ public class GameConfig {
     public static final int ROAD_WIDTH = 400;                    // how wide the asphalt is
     public static final int LANE_WIDTH = ROAD_WIDTH / LANE_COUNT; // = 100 pixels per lane
 
+    // ---------------- Background ----------------
+    // Size of one background picture next to the road (in game pixels, it grows in fullscreen).
+    // The grass strip next to the road is ROAD_X (= 40) wide, so 60 is a bit bigger than it
+    // and the picture gets cut by the window edge. Make it bigger or smaller to taste.
+    public static final int BACKGROUND_TILE_SIZE = 60;
+
     // ---------------- Cars ----------------
     public static final int CAR_WIDTH = 50;
     public static final int CAR_HEIGHT = 90;
     public static final int PLAYER_Y = WINDOW_HEIGHT - 150;      // the player stays at this height
 
     // ---------------- Player speed (km/h) ----------------
-    public static final double MAX_SPEED = 300;    // top speed
+    public static final double MAX_SPEED = 400;    // top speed
     public static final double ACCELERATION = 0.30; // km/h gained per frame while holding W
     public static final double BRAKE_POWER = 3.0;  // km/h lost per frame while holding S
     public static final double COAST_SLOWDOWN = 0.2; // km/h lost per frame when pressing nothing
@@ -51,11 +57,11 @@ public class GameConfig {
     // ---------------- Traffic ----------------
     public static final double TRAFFIC_MIN_SPEED = 50;  // km/h
     public static final double TRAFFIC_MAX_SPEED = 110; // km/h
-    public static final int SPAWN_EVERY_TICKS = 45;     // try to spawn a car every 45 frames (~0.75 s)
+    public static final int SPAWN_EVERY_TICKS = 35;     // try to spawn a car every 45 frames (~0.75 s)
 
     // ---------------- Score ----------------
-    public static final double POINTS_PER_SECOND = 10;  // base points while driving
-    public static final double MAX_MULTIPLIER = 2.5;    // the speed bonus never goes above this
+    public static final double POINTS_PER_SECOND = 1;  // base points while driving
+    public static final double MAX_MULTIPLIER = 3;    // the speed bonus never goes above this
 
     // Private constructor: nobody should do "new GameConfig()",
     // this class is only a box of constants.

@@ -48,16 +48,12 @@ public class Road {
 
     
 
+    /**
+     * Draws the road in GAME coordinates (0..WINDOW_WIDTH, 0..WINDOW_HEIGHT).
+     * The background picture is NOT drawn here, see drawBackground(...).
+     */
     public void draw(Graphics2D g) {
-         // 1) Background (grass) - does NOT scroll
-        if (backgroundImage != null) {
-            g.drawImage(backgroundImage, 0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT, null);
-        } else {
-            g.setColor(new Color(40, 140, 60));
-            g.fillRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
-        }
-
-        // 2) Asphalt - DOES scroll
+        // 1) Asphalt - DOES scroll
         if (roadImage != null) {
             drawScrollingRoadImage(g);
         } else {
@@ -65,12 +61,12 @@ public class Road {
             g.fillRect(GameConfig.ROAD_X, 0, GameConfig.ROAD_WIDTH, GameConfig.WINDOW_HEIGHT);
         }
 
-        // 3) Solid white lines on the left and right edge of the road
+        // 2) Solid white lines on the left and right edge of the road
         g.setColor(Color.WHITE);
         g.fillRect(GameConfig.ROAD_X, 0, 4, GameConfig.WINDOW_HEIGHT);
         g.fillRect(GameConfig.ROAD_X + GameConfig.ROAD_WIDTH - 4, 0, 4, GameConfig.WINDOW_HEIGHT);
 
-        // 4) Dashed lines between the lanes (these scroll too)
+        // 3) Dashed lines between the lanes (these scroll too)
         for (int lane = 1; lane < GameConfig.LANE_COUNT; lane++) {
             int lineX = GameConfig.ROAD_X + lane * GameConfig.LANE_WIDTH - 2;
 
@@ -81,6 +77,46 @@ public class Road {
         }
     }
 
+
+    /**
+     * Draws the background picture on the WHOLE panel, LEFT and RIGHT of the road.
+     * This is in SCREEN pixels (not game pixels), because in fullscreen the panel
+     * is much wider than the game and the picture fills the extra space too.
+     *
+     * The pictures are lined up starting at the road's edges and going outwards,
+     * so the picture right next to the road is never cut on the road side.
+     *
+     * @param panelWidth   width of the whole panel in screen pixels
+     * @param panelHeight  height of the whole panel in screen pixels
+     * @param roadLeftX    screen x where the road starts
+     * @param roadRightX   screen x where the road ends
+     * @param tileSize     how big one picture is on the screen
+     */
+    public void drawBackground(Graphics2D g, int panelWidth, int panelHeight,
+                               int roadLeftX, int roadRightX, int tileSize) {
+        if (backgroundImage == null) {
+            g.setColor(new Color(40, 140, 60));
+            g.fillRect(0, 0, roadLeftX, panelHeight);
+            g.fillRect(roadRightX, 0, panelWidth - roadRightX, panelHeight);
+            return;
+        }
+
+        // left side: from the road edge going LEFT
+        for (int x = roadLeftX - tileSize; x > -tileSize; x -= tileSize) {
+            drawImageColumn(g, x, tileSize, panelHeight);
+        }
+        // right side: from the road edge going RIGHT
+        for (int x = roadRightX; x < panelWidth; x += tileSize) {
+            drawImageColumn(g, x, tileSize, panelHeight);
+        }
+    }
+
+    /** One column of pictures from the top of the panel to the bottom. */
+    private void drawImageColumn(Graphics2D g, int x, int tileSize, int panelHeight) {
+        for (int y = 0; y < panelHeight; y += tileSize) {
+            g.drawImage(backgroundImage, x, y, tileSize, tileSize, null);
+        }
+    }
 
         private void drawScrollingRoadImage(Graphics2D g) {
         int imageHeight = roadImage.getHeight();

@@ -19,7 +19,7 @@ public class GameWindow extends JFrame {
     public GameWindow() {
         setTitle("F1 Minigame - Traffic Racer");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setResizable(false);
+        setResizable(true); // so it can go fullscreen (Super+F), the game scales to fit
 
         panel = new GamePanel();
         add(panel);
