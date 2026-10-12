@@ -57,6 +57,11 @@ public class GamePanel extends JPanel implements ActionListener {
         timer.start();
     }
 
+    /** Stops the game loop when the containing window is closed. */
+    public void stop() {
+        timer.stop();
+    }
+
     /** Puts everything back to the beginning (used at start and after a crash). */
     private void resetGame() {
         road = new Road();
@@ -117,7 +122,7 @@ public class GamePanel extends JPanel implements ActionListener {
                 return;
             }
         }
-        // TODO (Victor): near-miss bonus -> see Victor.txt, "Next steps"
+        // TODO (Victor): near-miss bonus -> see Victor.txt, Next steps
     }
 
     private void updateScore() {

@@ -2,6 +2,8 @@ package f1_game.base;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
  * GameWindow = the window (JFrame) that holds the game.
@@ -12,13 +14,21 @@ import javax.swing.SwingUtilities;
  */
 public class GameWindow extends JFrame {
 
+    private final GamePanel panel;
+
     public GameWindow() {
         setTitle("F1 Minigame - Traffic Racer");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // closing the window stops the program
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setResizable(false);
 
-        GamePanel panel = new GamePanel();
+        panel = new GamePanel();
         add(panel);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                panel.stop();
+            }
+        });
 
         pack();                       // make the window exactly as big as the panel wants
         setLocationRelativeTo(null);  // put the window in the middle of the screen

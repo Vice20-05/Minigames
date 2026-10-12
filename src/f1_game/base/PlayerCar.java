@@ -26,7 +26,7 @@ public class PlayerCar extends GameObject {
         // "super(...)" calls the constructor of the parent class (GameObject).
         // imagePath is null for now -> red placeholder box.
         // When the art is ready, change null to e.g. "Resorces/Textures/player.png".
-        super(0, GameConfig.PLAYER_Y, GameConfig.CAR_WIDTH, GameConfig.CAR_HEIGHT, Color.RED, null);
+        super(0, GameConfig.PLAYER_Y, GameConfig.CAR_WIDTH, GameConfig.CAR_HEIGHT, Color.RED, "Resorces/Textures/f1_game_playerCar/f1.png");
 
         lane = 1; // start in the second lane
         x = targetX();  // put the car exactly in its lane

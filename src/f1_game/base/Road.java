@@ -2,6 +2,7 @@ package f1_game.base;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 
 /**
  * Road = draws the grass, the asphalt and the white lane lines.
@@ -17,10 +18,21 @@ public class Road {
     private static final int DASH_GAP = 40;    // empty space between dashes
     private static final int DASH_PERIOD = DASH_LENGTH + DASH_GAP;
 
+    private  final BufferedImage backgroundImage;
+    private  final BufferedImage road; 
+
     // How far the lines have moved. It always stays between 0 and DASH_PERIOD,
     // because after one full dash+gap the picture looks exactly the same again.
     private double scrollOffset = 0;
 
+    private  double roadImageOffset=0;
+    
+    
+    public Road(){
+        backgroundImage=loadImage("Resources/Textures/f1game_grass_background/background.png");
+        roadImage=loadImage("Resources/Textures/f1game_grass_background/road.png");
+    }
+    
     /**
      * Moves the lane lines down.
      * @param pixels how many pixels to move this frame (bigger = faster)
@@ -28,6 +40,8 @@ public class Road {
     public void update(double pixels) {
         scrollOffset = (scrollOffset + pixels) % DASH_PERIOD;
     }
+
+    
 
     public void draw(Graphics2D g) {
         // 1) Grass = the whole background
