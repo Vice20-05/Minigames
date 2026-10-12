@@ -6,9 +6,6 @@
             "name": "Launch F1 game",
             "request": "launch",
             "mainClass": "f1_game.f1Main",
-            "classPaths": [
-                "${workspaceFolder}/src"
-            ],
             "cwd": "${workspaceFolder}"
         }
     ]

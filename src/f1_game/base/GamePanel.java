@@ -122,7 +122,7 @@ public class GamePanel extends JPanel implements ActionListener {
                 return;
             }
         }
-        // TODO (Victor): near-miss bonus -> see Victor.txt, Next steps
+        // to do  (Victor: near-miss bonus -> see Victor.txt, Next steps
     }
 
     private void updateScore() {

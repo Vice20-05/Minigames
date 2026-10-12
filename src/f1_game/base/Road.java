@@ -3,10 +3,6 @@ package f1_game.base;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-
-import javax.imageio.ImageIO;
 
 /**
  * Road = draws the grass, the asphalt and the white lane lines.
@@ -33,8 +29,9 @@ public class Road {
     
     
     public Road(){
-        backgroundImage=loadImage("Resorces/Textures/f1game_grass_background/background.png");
-        roadImage=loadImage("Resorces/Textures/f1game_grass_background/road.png");
+        backgroundImage=ImageLoader.load("Resorces/Textures/f1game_grass_background/background.png");
+        // road.png doesn't exist yet -> a gray road is drawn until you add it
+        roadImage=ImageLoader.load("Resorces/Textures/f1game_grass_background/road.png");
     }
     
     /**
@@ -95,14 +92,6 @@ public class Road {
     }
 
 
-      private BufferedImage loadImage(String imagePath) {
-        try {
-            return ImageIO.read(new File(imagePath));
-        } catch (IOException e) {
-            System.out.println("Could not load image: " + imagePath + " -> using a color instead");
-            return null;
-        }
-    }
     /**
      * Helper: gives back the x coordinate of the MIDDLE of a lane.
      * Lanes are numbered from the left: 0, 1, 2, 3.

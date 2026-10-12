@@ -4,9 +4,6 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import javax.imageio.ImageIO;
 
 /**
  * GameObject = the "parent" of everything we draw on the road (player car,
@@ -45,25 +42,8 @@ public abstract class GameObject {
         this.width = width;
         this.height = height;
         this.color = color;
-        this.image = loadImage(imagePath);
-    }
-
-    /**
-     * Tries to load a picture from the disk.
-     * If the path is null or the file is missing, we return null and the
-     * object will simply be drawn as a colored rectangle. The game never
-     * crashes because of a missing picture.
-     */
-    private BufferedImage loadImage(String imagePath) {
-        if (imagePath == null) {
-            return null;
-        }
-        try {
-            return ImageIO.read(new File(imagePath));
-        } catch (IOException e) {
-            System.out.println("Could not load image: " + imagePath + " -> using a colored box instead");
-            return null;
-        }
+        // If the picture is missing we get null and draw a colored rectangle instead.
+        this.image = ImageLoader.load(imagePath);
     }
 
     /**
