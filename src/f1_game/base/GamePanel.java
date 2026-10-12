@@ -111,7 +111,7 @@ public class GamePanel extends JPanel implements ActionListener {
 
     private void checkCollisions() {
         for (TrafficCar car : traffic) {
-            // intersects = do the two invisible boxes overlap?
+            // intersects = do the two invisible boxes overlap
             if (player.getBounds().intersects(car.getBounds())) {
                 gameOver = true;
                 return;

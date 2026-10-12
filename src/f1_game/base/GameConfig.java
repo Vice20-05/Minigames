@@ -15,7 +15,9 @@ package f1_game.base;
 public class GameConfig {
 
     // ---------------- Window ----------------
-    public static final int WINDOW_WIDTH = 480;   // pixels
+    public static final int WINDOW_WIDTH = 480;   // pixels , and keep these two like so
+    //the width and height are gonna be centered , so the game is in the middle
+
     public static final int WINDOW_HEIGHT = 720;  // pixels (tall, because the road goes up)
 
     // ---------------- Game loop ----------------
@@ -23,7 +25,7 @@ public class GameConfig {
     public static final int TICK_MS = 1000 / FPS;  // milliseconds between two frames (~16 ms)
 
     // ---------------- Road ----------------
-    public static final int LANE_COUNT = 4;
+    public static final int LANE_COUNT = 2;
     public static final int ROAD_X = 40;                         // where the asphalt starts (left edge)
     public static final int ROAD_WIDTH = 400;                    // how wide the asphalt is
     public static final int LANE_WIDTH = ROAD_WIDTH / LANE_COUNT; // = 100 pixels per lane
@@ -35,7 +37,7 @@ public class GameConfig {
 
     // ---------------- Player speed (km/h) ----------------
     public static final double MAX_SPEED = 300;    // top speed
-    public static final double ACCELERATION = 1.0; // km/h gained per frame while holding W
+    public static final double ACCELERATION = 0.30; // km/h gained per frame while holding W
     public static final double BRAKE_POWER = 3.0;  // km/h lost per frame while holding S
     public static final double COAST_SLOWDOWN = 0.2; // km/h lost per frame when pressing nothing
 

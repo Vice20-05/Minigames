@@ -3,10 +3,6 @@
 Two small 2D games in Java Swing, launched from one main window.
 Status: planning phase, no code yet.
 
-## Who does what
-- **Art (you):** art style, sprites, cars, tanks, walls, backgrounds.
-- **Engineering (me):** game logic, structure, database.
-- Until the art is ready I'll use placeholder shapes (colored boxes). Each object just has an image path, so your art gets dropped in later without changing any logic.
 
 ## Build order
 1. Game logic / object model first (cars, tanks, bullets, walls, collisions )

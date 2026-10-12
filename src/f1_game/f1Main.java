@@ -1,6 +1,10 @@
+package f1_game;
 
-import  javax.swing.JFrame;
+import f1_game.base.GameWindow;
+import javax.swing.SwingUtilities;
 
-class f1Main{
-    
+public class f1Main {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(GameWindow::new);
+    }
 }
