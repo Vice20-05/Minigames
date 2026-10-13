@@ -1,9 +1,9 @@
 package f1_game.base;
 
-import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 /**
  * GameWindow = the window (JFrame) that holds the game.
@@ -17,7 +17,7 @@ public class GameWindow extends JFrame {
     private final GamePanel panel;
 
     public GameWindow() {
-        setTitle("F1 Minigame - Traffic Racer");
+        setTitle("Minigame - Traffic Dogde ");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setResizable(true); // so it can go fullscreen (Super+F), the game scales to fit
 

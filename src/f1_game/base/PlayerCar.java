@@ -9,18 +9,17 @@ import java.awt.Rectangle;
  * - It stays near the bottom of the screen (only x changes, y stays the same).
  * - W / Up arrow    -> accelerate
  * - S / Down arrow  -> brake
- * - A / Left arrow  -> move one lane to the left
- * - D / Right arrow -> move one lane to the right
+ * - A / Left arrow  -> steer left  (hold it: the car turns more and more, like an analog stick)
+ * - D / Right arrow -> steer right
  */
 public class PlayerCar extends GameObject {
 
-    private int lane;          // which lane we are in (0 = leftmost)
     private double speed;      // current speed in km/h
 
-    // We remember if left/right was already held down last frame.
-    // Without this, holding A for 1 second would jump 60 lanes (one per frame)!
-    private boolean leftWasPressed = false;
-    private boolean rightWasPressed = false;
+    // How fast we move SIDEWAYS right now, in pixels per frame.
+    // Negative = going left, positive = going right, 0 = straight.
+    // Holding A/D changes it a little every frame, so turning starts soft and gets stronger.
+    private double steerSpeed;
 
     public PlayerCar() {
         // "super(...)" calls the constructor of the parent class (GameObject).
@@ -28,9 +27,9 @@ public class PlayerCar extends GameObject {
         // When the art is ready, change null to e.g. "Resorces/Textures/player.png".
         super(0, GameConfig.PLAYER_Y, GameConfig.CAR_WIDTH, GameConfig.CAR_HEIGHT, Color.RED, "Resorces/Textures/f1_game_playerCar/f1.png");
 
-        lane = 1; // start in the second lane
-        x = targetX();  // put the car exactly in its lane
+        x = Road.laneCenterX(1) - width / 2.0; // start in the middle of the second lane
         speed = 0;
+        steerSpeed = 0;
     }
 
     /**
@@ -38,8 +37,7 @@ public class PlayerCar extends GameObject {
      */
     public void update(KeyHandler keys) {
         updateSpeed(keys);
-        updateLane(keys);
-        slideTowardsLane();
+        updateSteering(keys);
     }
 
     private void updateSpeed(KeyHandler keys) {
@@ -60,38 +58,55 @@ public class PlayerCar extends GameObject {
         }
     }
 
-    private void updateLane(KeyHandler keys) {
-        // "&& !leftWasPressed" means: only react the FIRST frame the key goes down.
-        if (keys.isLeftPressed() && !leftWasPressed && lane > 0) {
-            lane--;
-        }
-        if (keys.isRightPressed() && !rightWasPressed && lane < GameConfig.LANE_COUNT - 1) {
-            lane++;
-        }
-        leftWasPressed = keys.isLeftPressed();
-        rightWasPressed = keys.isRightPressed();
-    }
-
     /**
-     * Instead of teleporting to the new lane, the car moves 25% of the
-     * remaining distance every frame. This makes a smooth slide.
+     * Analog-style steering, the same idea as updateSpeed but sideways:
+     *   - hold A -> steerSpeed goes down a bit every frame (more and more to the left)
+     *   - hold D -> steerSpeed goes up a bit every frame (more and more to the right)
+     *   - nothing (or both) -> steerSpeed goes back to 0, the car straightens out
      */
-    private void slideTowardsLane() {
-        x += (targetX() - x) * 0.25;
-    }
+    private void updateSteering(KeyHandler keys) {
+        boolean left = keys.isLeftPressed();
+        boolean right = keys.isRightPressed();
 
-    /** The x position the car wants to reach (centered in its lane). */
-    private double targetX() {
-        return Road.laneCenterX(lane) - width / 2.0;
+        if (left && !right) {
+            steerSpeed -= GameConfig.STEER_ACCELERATION;
+        } else if (right && !left) {
+            steerSpeed += GameConfig.STEER_ACCELERATION;
+        } else {
+            // Let go: move steerSpeed towards 0, but don't shoot past 0 to the other side.
+            if (steerSpeed > 0) {
+                steerSpeed = Math.max(0, steerSpeed - GameConfig.STEER_RETURN);
+            } else {
+                steerSpeed = Math.min(0, steerSpeed + GameConfig.STEER_RETURN);
+            }
+        }
+
+        // Never turn faster than MAX_STEER_SPEED (in both directions).
+        steerSpeed = Math.max(-GameConfig.MAX_STEER_SPEED, Math.min(steerSpeed, GameConfig.MAX_STEER_SPEED));
+
+        // Actually move the car.
+        x += steerSpeed;
+
+        // Stay on the asphalt. If we hit the edge, stop the sideways movement too,
+        // otherwise the car would "stick" to the edge for a moment when you steer back.
+        double leftEdge = GameConfig.ROAD_X;
+        double rightEdge = GameConfig.ROAD_X + GameConfig.ROAD_WIDTH - width;
+        if (x < leftEdge) {
+            x = leftEdge;
+            steerSpeed = 0;
+        }
+        if (x > rightEdge) {
+            x = rightEdge;
+            steerSpeed = 0;
+        }
     }
 
     /**
      * A slightly BIGGER invisible box around the car (from the plan).
      * Traffic touching this box but NOT the car = near miss -> bonus points.
-     * Not used yet, it is ready for you (see Victor.txt, "Next steps").
      */
     public Rectangle getNearMissBounds() {
-        int margin = 15;
+        int margin = GameConfig.NEAR_MISS_MARGIN;
         return new Rectangle((int) x - margin, (int) y - margin, width + 2 * margin, height + 2 * margin);
     }
 

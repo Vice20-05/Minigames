@@ -16,6 +16,15 @@ public class TrafficCar extends GameObject {
 
     private final double speed; // km/h, never changes for this car
 
+    // The lane the car is in, or DRIVING TO while it changes lanes.
+    private int lane;
+    // Each car changes lanes at most once, so it doesn't zig-zag around.
+    private boolean hasChangedLane = false;
+
+    // Did this car already give the player a near-miss bonus?
+    // A car stays close for many frames, so without this we would give the bonus every frame.
+    private boolean nearMissed = false;
+
     /**
      * @param lane  which lane the car drives in (0 = left)
      * @param speed how fast this car drives, in km/h
@@ -33,6 +42,7 @@ public class TrafficCar extends GameObject {
               color,
               null); // no path: the picture is already loaded, we set it below
         this.speed = speed;
+        this.lane = lane;
 
         // We got a picture: use it instead of the colored box.
         if (image != null) {
@@ -55,6 +65,49 @@ public class TrafficCar extends GameObject {
     public void update(double playerSpeed) {
         double relativeSpeed = playerSpeed - speed;
         y += relativeSpeed * GameConfig.PIXELS_PER_KMH;
+
+        slideTowardsLane();
+    }
+
+    /**
+     * If the car is not in the middle of its lane (because it is changing lanes),
+     * move it a few pixels sideways. When it is close enough, snap it in place.
+     */
+    private void slideTowardsLane() {
+        double targetX = Road.laneCenterX(lane) - width / 2.0;
+        double distance = targetX - x;
+
+        if (Math.abs(distance) <= GameConfig.LANE_CHANGE_SPEED) {
+            x = targetX; // close enough: we arrived
+        } else if (distance > 0) {
+            x += GameConfig.LANE_CHANGE_SPEED; // target is to the right
+        } else {
+            x -= GameConfig.LANE_CHANGE_SPEED; // target is to the left
+        }
+    }
+
+    /** Start driving to another lane. The car slides there over the next frames. */
+    public void changeLane(int newLane) {
+        lane = newLane;
+        hasChangedLane = true;
+    }
+
+    public int getLane() {
+        return lane;
+    }
+
+    public boolean hasChangedLane() {
+        return hasChangedLane;
+    }
+
+    /** True if this car already gave its near-miss bonus. */
+    public boolean hasNearMissed() {
+        return nearMissed;
+    }
+
+    /** Remember that this car gave its bonus, so it only counts ONCE. */
+    public void markNearMissed() {
+        nearMissed = true;
     }
 
     /**

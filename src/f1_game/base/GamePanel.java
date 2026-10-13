@@ -39,6 +39,11 @@ public class GamePanel extends JPanel implements ActionListener {
     private boolean gameOver;
     private boolean started;   // false until the player presses W the first time
 
+    // Near miss on screen: "NEAR MISS! +50" shows for a moment after every near miss.
+    private int nearMissPopupTicks;  // frames left to show the text (0 = hidden)
+    private int nearMissPopupPoints; // the points written in the text
+    private int nearMissCount;       // how many near misses this run (shown at game over)
+
     public GamePanel() {
         setPreferredSize(new Dimension(GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT));
         setBackground(Color.BLACK);
@@ -73,6 +78,8 @@ public class GamePanel extends JPanel implements ActionListener {
         ticks = 0;
         gameOver = false;
         started = false; // after a restart (R) we wait for W again
+        nearMissPopupTicks = 0;
+        nearMissCount = 0;
     }
 
     /** The Timer calls this 60 times per second. */
@@ -91,8 +98,6 @@ public class GamePanel extends JPanel implements ActionListener {
                 resetGame();
             }
             return; // when the game is over, nothing moves
-
-            
         }
 
         // Wait for the first W press. Until then nothing moves: no time, no score, no traffic.
@@ -115,6 +120,9 @@ public class GamePanel extends JPanel implements ActionListener {
         // Maybe add a new traffic car
         spawner.update(traffic);
 
+        // After LANE_CHANGE_SCORE points some cars switch lanes
+        spawner.updateLaneChanges(traffic, getScore());
+
         // Move every traffic car
         for (TrafficCar car : traffic) {
             car.update(player.getSpeed());
@@ -125,6 +133,11 @@ public class GamePanel extends JPanel implements ActionListener {
 
         checkCollisions();
         updateScore();
+
+        // Count down the "NEAR MISS!" text, it disappears when it reaches 0
+        if (nearMissPopupTicks > 0) {
+            nearMissPopupTicks--;
+        }
     }
 
     private void checkCollisions() {
@@ -134,8 +147,20 @@ public class GamePanel extends JPanel implements ActionListener {
                 gameOver = true;
                 return;
             }
+            // We only get here if the car did NOT crash into us.
+            // Near miss = the traffic car touches the player's BIGGER box (but not the car itself).
+            // !car.hasNearMissed() makes sure each car gives the bonus only once.
+            if (player.getNearMissBounds().intersects(car.getBounds()) && !car.hasNearMissed()) {
+                baseScore += GameConfig.NEAR_MISS_BONUS;
+                car.markNearMissed(); // this car is done, no more bonus from it
+
+                // Show "NEAR MISS! +points" on screen. The bonus goes into baseScore,
+                // so on screen it is worth NEAR_MISS_BONUS x the multiplier.
+                nearMissCount++;
+                nearMissPopupPoints = (int) (GameConfig.NEAR_MISS_BONUS * getMultiplier());
+                nearMissPopupTicks = GameConfig.NEAR_MISS_POPUP_TICKS;
+            }
         }
-        // to do  (Victor: near-miss bonus -> see Victor.txt, Next steps
     }
 
     private void updateScore() {
@@ -203,6 +228,7 @@ public class GamePanel extends JPanel implements ActionListener {
             car.draw(g);
         }
         player.draw(g);
+        drawNearMissPopup(g);
         drawHud(g);                 // front
         if (!started) {
             drawStartScreen(g);     // "Press W to start" on top of everything
@@ -225,6 +251,25 @@ public class GamePanel extends JPanel implements ActionListener {
         g.drawString("Time: " + (ticks / GameConfig.FPS) + "s", 380, 26);
     }
 
+    /**
+     * "NEAR MISS! +50" above the player. It floats up and fades out:
+     * the fewer frames are left, the higher and more transparent it is.
+     */
+    private void drawNearMissPopup(Graphics2D g) {
+        if (nearMissPopupTicks <= 0) {
+            return; // nothing to show
+        }
+        // 1.0 right after the near miss, going down to 0.0 at the end
+        double timeLeft = (double) nearMissPopupTicks / GameConfig.NEAR_MISS_POPUP_TICKS;
+
+        int alpha = (int) (255 * timeLeft);        // 255 = solid, 0 = invisible
+        int floatUp = (int) (40 * (1 - timeLeft)); // moves 40 pixels up over time
+
+        g.setColor(new Color(255, 215, 0, alpha)); // gold
+        g.setFont(new Font("Arial", Font.BOLD, 24));
+        drawCentered(g, "NEAR MISS! +" + nearMissPopupPoints, GameConfig.PLAYER_Y - 30 - floatUp);
+    }
+
     /** Shown before the game starts, until W is pressed. */
     private void drawStartScreen(Graphics2D g) {
         g.setColor(new Color(0, 0, 0, 150)); // black, half transparent, so you still see the road
@@ -240,13 +285,14 @@ public class GamePanel extends JPanel implements ActionListener {
         g.fillRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
 
         g.setColor(Color.RED);
-        g.setFont(new Font("Arial", Font.BOLD, 48));
-        drawCentered(g, "CRASH!", GameConfig.WINDOW_HEIGHT / 2 - 40);
+        g.setFont(new Font("Hardigan", Font.BOLD, 48));
+        drawCentered(g, "Game Over !", GameConfig.WINDOW_HEIGHT / 2 - 40);
 
         g.setColor(Color.WHITE);
         g.setFont(new Font("Arial", Font.PLAIN, 22));
         drawCentered(g, "Score: " + (int) getScore(), GameConfig.WINDOW_HEIGHT / 2 + 10);
-        drawCentered(g, "Press R to restart", GameConfig.WINDOW_HEIGHT / 2 + 50);
+        drawCentered(g, "Near misses: " + nearMissCount, GameConfig.WINDOW_HEIGHT / 2 + 45);
+        drawCentered(g, "Press R to restart", GameConfig.WINDOW_HEIGHT / 2 + 85);
     }
 
     /** Draws text in the horizontal middle of the window. */

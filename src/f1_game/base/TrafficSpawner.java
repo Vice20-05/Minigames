@@ -69,6 +69,68 @@ public class TrafficSpawner {
         traffic.add(new TrafficCar(lane, speed, color, image));
     }
 
+    /**
+     * Called once every frame (from GamePanel). After LANE_CHANGE_SCORE points,
+     * cars sometimes switch to the lane next to them, so you can't just sit in one spot.
+     *
+     * A car only changes lanes if:
+     *   - it hasn't changed lanes before (once per car, no zig-zag)
+     *   - it is on screen and still far enough IN FRONT of the player (so you can react)
+     *   - the lane next to it is free (no other car close to it there)
+     */
+    public void updateLaneChanges(List<TrafficCar> traffic, double score) {
+        if (score < GameConfig.LANE_CHANGE_SCORE) {
+            return; // too early in the game
+        }
+
+        for (TrafficCar car : traffic) {
+            if (car.hasChangedLane()) {
+                continue; // this car already did its lane change
+            }
+
+            // Only cars between the top of the screen and a bit above the player.
+            boolean onScreen = car.getY() > 0;
+            boolean farEnoughAhead = car.getY() < GameConfig.PLAYER_Y - GameConfig.CAR_HEIGHT * 2;
+            if (!onScreen || !farEnoughAhead) {
+                continue;
+            }
+
+            // Roll the dice: most frames nothing happens.
+            if (random.nextDouble() > GameConfig.LANE_CHANGE_CHANCE) {
+                continue;
+            }
+
+            // Pick the lane to the left or to the right (randomly).
+            int newLane = car.getLane() + (random.nextBoolean() ? 1 : -1);
+            // That lane doesn't exist (we are at the edge)? Then take the other side.
+            if (newLane < 0 || newLane >= GameConfig.LANE_COUNT) {
+                newLane = car.getLane() - (newLane - car.getLane());
+            }
+            if (newLane < 0 || newLane >= GameConfig.LANE_COUNT) {
+                continue; // a road with only 1 lane: nowhere to go
+            }
+
+            if (isLaneFreeNear(traffic, car, newLane)) {
+                car.changeLane(newLane);
+            }
+        }
+    }
+
+    /** True if no OTHER car in that lane is close to this car (above or below it). */
+    private boolean isLaneFreeNear(List<TrafficCar> traffic, TrafficCar car, int lane) {
+        for (TrafficCar other : traffic) {
+            if (other == car) {
+                continue; // don't compare the car with itself
+            }
+            boolean sameLane = other.getLane() == lane;
+            boolean close = Math.abs(other.getY() - car.getY()) < GameConfig.CAR_HEIGHT * 2.5;
+            if (sameLane && close) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** "Top" = the area from above the screen down to 3 car-lengths. */
     private boolean isLaneBusyAtTop(List<TrafficCar> traffic, int lane) {
         int laneLeft = GameConfig.ROAD_X + lane * GameConfig.LANE_WIDTH;
