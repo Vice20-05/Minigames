@@ -42,7 +42,7 @@ public class GameConfig {
     public static final int PLAYER_Y = WINDOW_HEIGHT - 150;      // the player stays at this height
 
     // ---------------- Player speed (km/h) ----------------
-    public static final double MAX_SPEED = 400;    // top speed
+    public static final double MAX_SPEED = 300;    // top speed
     public static final double ACCELERATION = 0.30; // km/h gained per frame while holding W
     public static final double BRAKE_POWER = 3.0;  // km/h lost per frame while holding S
     public static final double COAST_SLOWDOWN = 0.2; // km/h lost per frame when pressing nothing
@@ -56,12 +56,12 @@ public class GameConfig {
 
     // ---------------- Traffic ----------------
     public static final double TRAFFIC_MIN_SPEED = 50;  // km/h
-    public static final double TRAFFIC_MAX_SPEED = 110; // km/h
-    public static final int SPAWN_EVERY_TICKS = 35;     // try to spawn a car every 45 frames (~0.75 s)
+    public static final double TRAFFIC_MAX_SPEED = 100; // km/h
+    public static final int SPAWN_EVERY_TICKS = 25;     // try to spawn a car every 45 frames (~0.75 s)
 
     // ---------------- Score ----------------
     public static final double POINTS_PER_SECOND = 1;  // base points while driving
-    public static final double MAX_MULTIPLIER = 3;    // the speed bonus never goes above this
+    public static final double MAX_MULTIPLIER = 3.0;    // the speed bonus never goes above this
 
     // Private constructor: nobody should do "new GameConfig()",
     // this class is only a box of constants.

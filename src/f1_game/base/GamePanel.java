@@ -37,6 +37,7 @@ public class GamePanel extends JPanel implements ActionListener {
     private double baseScore;  // points from time only, WITHOUT the multiplier (see getScore)
     private int ticks;         // how many frames since the start (ticks / FPS = seconds)
     private boolean gameOver;
+    private boolean started;   // false until the player presses W the first time
 
     public GamePanel() {
         setPreferredSize(new Dimension(GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT));
@@ -71,6 +72,7 @@ public class GamePanel extends JPanel implements ActionListener {
         baseScore = 0;
         ticks = 0;
         gameOver = false;
+        started = false; // after a restart (R) we wait for W again
     }
 
     /** The Timer calls this 60 times per second. */
@@ -89,6 +91,17 @@ public class GamePanel extends JPanel implements ActionListener {
                 resetGame();
             }
             return; // when the game is over, nothing moves
+
+            
+        }
+
+        // Wait for the first W press. Until then nothing moves: no time, no score, no traffic.
+        if (!started) {
+            if (keys.isUpPressed()) {
+                started = true; // go! from the next line on the game runs normally
+            } else {
+                return; // still waiting, skip the rest of the update
+            }
         }
 
         ticks++;
@@ -191,6 +204,9 @@ public class GamePanel extends JPanel implements ActionListener {
         }
         player.draw(g);
         drawHud(g);                 // front
+        if (!started) {
+            drawStartScreen(g);     // "Press W to start" on top of everything
+        }
         if (gameOver) {
             drawGameOver(g);
         }
@@ -207,6 +223,16 @@ public class GamePanel extends JPanel implements ActionListener {
         g.drawString("Score: " + (int) getScore(), 190, 26);
         g.drawString(String.format("x%.1f", getMultiplier()), 300, 26);
         g.drawString("Time: " + (ticks / GameConfig.FPS) + "s", 380, 26);
+    }
+
+    /** Shown before the game starts, until W is pressed. */
+    private void drawStartScreen(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 150)); // black, half transparent, so you still see the road
+        g.fillRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
+
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 32));
+        drawCentered(g, "Press W  or ↑ to start, ", GameConfig.WINDOW_HEIGHT / 2);
     }
 
     private void drawGameOver(Graphics2D g) {

@@ -1,6 +1,7 @@
 package f1_game.base;
 
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Random;
 
@@ -21,6 +22,10 @@ public class TrafficSpawner {
     private static final Color[] CAR_COLORS = {
         Color.BLUE, Color.YELLOW, Color.ORANGE, Color.CYAN, Color.MAGENTA, Color.LIGHT_GRAY
     };
+
+    // All the pictures from the traffic folder, loaded ONCE when the game starts.
+    // Every new car gets a random one. Add a .png to the folder = a new car type.
+    private final List<BufferedImage> carImages = ImageLoader.loadFolder("Resorces/Textures/traffic");
 
     private final Random random = new Random();
     private int ticksUntilNextSpawn = GameConfig.SPAWN_EVERY_TICKS;
@@ -53,7 +58,15 @@ public class TrafficSpawner {
                 + random.nextDouble() * (GameConfig.TRAFFIC_MAX_SPEED - GameConfig.TRAFFIC_MIN_SPEED);
         Color color = CAR_COLORS[random.nextInt(CAR_COLORS.length)];
 
-        traffic.add(new TrafficCar(lane, speed, color));
+        // Pick a random picture for the new car.
+        BufferedImage image = null; // null = no pictures found, use the color box
+        if (!carImages.isEmpty()) {
+            // nextInt(6) gives 0..5, so any index in the list. With more pictures
+            // in the folder the list is longer and this still works.
+            image = carImages.get(random.nextInt(carImages.size()));
+        }
+
+        traffic.add(new TrafficCar(lane, speed, color, image));
     }
 
     /** "Top" = the area from above the screen down to 3 car-lengths. */
