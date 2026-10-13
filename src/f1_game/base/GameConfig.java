@@ -68,15 +68,15 @@ public class GameConfig {
 
     // Lane changes: once your score reaches LANE_CHANGE_SCORE, traffic cars sometimes switch lanes.
     public static final double LANE_CHANGE_SCORE = 500;   // score where lane changes start
-    public static final double LANE_CHANGE_CHANCE = 0.01; // chance per car per frame (0.01 = 1%)
+    public static final double LANE_CHANGE_CHANCE = 0.06; // chance per car per frame (0.01 = 1%)
     public static final double LANE_CHANGE_SPEED = 1.0;   // pixels per frame sideways (smaller = slower, easier to dodge)
 
     // ---------------- Score ----------------
     public static final double POINTS_PER_SECOND = 10;  // base points while driving
-    public static final double MAX_MULTIPLIER = 3.0;    // the speed bonus never goes above this
-    public static final double NEAR_MISS_BONUS = 50;    // points for a near-miss (player car and traffic car almost touch)
+    public static final double MAX_MULTIPLIER = 4.0;    // the speed bonus never goes above this
+    public static final double NEAR_MISS_BONUS = 100;    // points for a near-miss (player car and traffic car almost touch)
     public static final int NEAR_MISS_POPUP_TICKS = 60; // how long "NEAR MISS!" stays on screen (60 = 1 second)
-    public static final int NEAR_MISS_MARGIN = 22;      // how many pixels around your car count as "near" (bigger = easier)
+    public static final int NEAR_MISS_MARGIN = 24;      // how many pixels around your car count as "near" (bigger = easier)
 
     // Private constructor: nobody should do "new GameConfig()",
     // this class is only a box of constants.
