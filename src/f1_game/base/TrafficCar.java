@@ -14,12 +14,18 @@ import java.awt.image.BufferedImage;
  */
 public class TrafficCar extends GameObject {
 
-    private final double speed; // km/h, never changes for this car
+    // km/h. cruiseSpeed is how fast the car LIKES to drive, it never changes.
+    // speed is how fast it drives RIGHT NOW: lower when it is stuck behind a slower car.
+    private final double cruiseSpeed;
+    private double speed;
 
     // The lane the car is in, or DRIVING TO while it changes lanes.
     private int lane;
     // Each car changes lanes at most once, so it doesn't zig-zag around.
     private boolean hasChangedLane = false;
+    // The screen height (y) where this car wants to switch lanes.
+    // -1 = this car never switches (most cars). Set by the TrafficSpawner.
+    private double laneChangeY = -1;
 
     // Did this car already give the player a near-miss bonus?
     // A car stays close for many frames, so without this we would give the bonus every frame.
@@ -41,6 +47,7 @@ public class TrafficCar extends GameObject {
               GameConfig.CAR_HEIGHT,
               color,
               null); // no path: the picture is already loaded, we set it below
+        this.cruiseSpeed = speed;
         this.speed = speed;
         this.lane = lane;
 
@@ -92,12 +99,54 @@ public class TrafficCar extends GameObject {
         hasChangedLane = true;
     }
 
+    /**
+     * Keeps a safe distance to the car in front of us (in the same lane), so cars never overlap.
+     * @param carAhead the closest car in front of us in our lane, or null if the lane is free
+     */
+    public void followCar(TrafficCar carAhead) {
+        if (carAhead == null) {
+            speedBackUp();
+            return;
+        }
+
+        // Empty space between their back bumper and our front bumper.
+        // (In front = higher on the screen = smaller y.)
+        double gap = y - (carAhead.y + carAhead.height);
+
+        if (gap < 0) {
+            // Already overlapping (can happen right after a lane change):
+            // put us right behind them and drive at their speed.
+            y = carAhead.y + carAhead.height;
+            speed = Math.min(speed, carAhead.speed);
+        } else if (gap < GameConfig.TRAFFIC_FOLLOW_DISTANCE) {
+            // Too close: slow down to their speed, so the gap stops shrinking.
+            speed = Math.min(speed, carAhead.speed);
+        } else {
+            speedBackUp(); // enough space, drive normally again
+        }
+    }
+
+    /** Slowly speed up again until we are back at our cruise speed. */
+    private void speedBackUp() {
+        speed = Math.min(speed + GameConfig.TRAFFIC_ACCELERATION, cruiseSpeed);
+    }
+
     public int getLane() {
         return lane;
     }
 
     public boolean hasChangedLane() {
         return hasChangedLane;
+    }
+
+    /** This car will switch lanes once it drives down to height y on the screen. */
+    public void planLaneChange(double y) {
+        laneChangeY = y;
+    }
+
+    /** True if this car was picked to switch lanes AND it reached its spot on the screen. */
+    public boolean wantsToChangeLane() {
+        return laneChangeY >= 0 && y >= laneChangeY;
     }
 
     /** True if this car already gave its near-miss bonus. */

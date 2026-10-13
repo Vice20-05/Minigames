@@ -2,6 +2,8 @@ package f1_game.base;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -33,8 +35,9 @@ public class TrafficSpawner {
     /**
      * Called once every frame. Counts down, and when it reaches 0 it tries to add a car.
      * @param traffic the list of cars on the road (we add the new car into it)
+     * @param score   the player's score right now (lane changes start at LANE_CHANGE_SCORE)
      */
-    public void update(List<TrafficCar> traffic) {
+    public void update(List<TrafficCar> traffic, double score) {
         ticksUntilNextSpawn--;
         if (ticksUntilNextSpawn > 0) {
             return; // not time yet
@@ -66,38 +69,45 @@ public class TrafficSpawner {
             image = carImages.get(random.nextInt(carImages.size()));
         }
 
-        traffic.add(new TrafficCar(lane, speed, color, image));
-    }
+        TrafficCar car = new TrafficCar(lane, speed, color, image);
 
-    /**
-     * Called once every frame (from GamePanel). After LANE_CHANGE_SCORE points,
-     * cars sometimes switch to the lane next to them, so you can't just sit in one spot.
-     *
-     * A car only changes lanes if:
-     *   - it hasn't changed lanes before (once per car, no zig-zag)
-     *   - it is on screen and still far enough IN FRONT of the player (so you can react)
-     *   - the lane next to it is free (no other car close to it there)
-     */
-    public void updateLaneChanges(List<TrafficCar> traffic, double score) {
-        if (score < GameConfig.LANE_CHANGE_SCORE) {
-            return; // too early in the game
+        // After LANE_CHANGE_SCORE points, roll the dice ONCE for this car:
+        // will it switch lanes, and if yes, WHERE on the screen?
+        // Only new cars get this, so the lane changes start a few at a time
+        // instead of every car on the road switching at once when you hit the score.
+        if (score >= GameConfig.LANE_CHANGE_SCORE && random.nextDouble() < GameConfig.LANE_CHANGE_CHANCE) {
+            // A random height between the top of the screen and LANE_CHANGE_LAST_Y,
+            // so every lane-changer moves over at a different spot.
+            double spot = random.nextDouble() * LANE_CHANGE_LAST_Y;
+            car.planLaneChange(spot);
         }
 
+        traffic.add(car);
+    }
+
+    // The lowest point where a car may START a lane change: 2 car-lengths above
+    // the player, so you always have time to react.
+    private static final double LANE_CHANGE_LAST_Y = GameConfig.PLAYER_Y - GameConfig.CAR_HEIGHT * 2;
+
+    /**
+     * Called once every frame (from GamePanel). Cars that were picked to switch lanes
+     * (see update) move to the lane next to them when they reach their spot.
+     *
+     * A car only changes lanes if:
+     *   - it was picked as a lane-changer and reached its spot on the screen
+     *   - it hasn't changed lanes before (once per car, no zig-zag)
+     *   - it is still far enough IN FRONT of the player (so you can react)
+     *   - the lane next to it is free (no other car close to it there)
+     * If the lane is busy, it tries again next frame (until it gets too close to you).
+     */
+    public void updateLaneChanges(List<TrafficCar> traffic) {
         for (TrafficCar car : traffic) {
-            if (car.hasChangedLane()) {
-                continue; // this car already did its lane change
+            if (car.hasChangedLane() || !car.wantsToChangeLane()) {
+                continue; // not a lane-changer, already done, or not at its spot yet
             }
 
-            // Only cars between the top of the screen and a bit above the player.
-            boolean onScreen = car.getY() > 0;
-            boolean farEnoughAhead = car.getY() < GameConfig.PLAYER_Y - GameConfig.CAR_HEIGHT * 2;
-            if (!onScreen || !farEnoughAhead) {
-                continue;
-            }
-
-            // Roll the dice: most frames nothing happens.
-            if (random.nextDouble() > GameConfig.LANE_CHANGE_CHANCE) {
-                continue;
+            if (car.getY() > LANE_CHANGE_LAST_Y) {
+                continue; // too close to the player now, it stays in its lane
             }
 
             // Pick the lane to the left or to the right (randomly).
@@ -114,6 +124,42 @@ public class TrafficSpawner {
                 car.changeLane(newLane);
             }
         }
+    }
+
+    /**
+     * Called once every frame (from GamePanel), after the cars moved.
+     * Every car looks at the car in front of it and brakes if it gets too close,
+     * so a fast car never drives into (through) a slow one.
+     */
+    public void keepDistance(List<TrafficCar> traffic) {
+        // Handle the cars from the TOP of the screen down (front car first).
+        // Then in a line of 3 cars, the middle one is already fixed before the last one looks at it.
+        List<TrafficCar> frontToBack = new ArrayList<>(traffic);
+        frontToBack.sort(Comparator.comparingDouble(TrafficCar::getY));
+
+        for (TrafficCar car : frontToBack) {
+            car.followCar(findCarAhead(traffic, car));
+        }
+    }
+
+    /**
+     * The closest car IN FRONT of this one (smaller y) that is in its way, or null if there is none.
+     * "In its way" = the two cars overlap sideways. We check pixels instead of lane numbers,
+     * so a car that is halfway through a lane change counts too.
+     */
+    private TrafficCar findCarAhead(List<TrafficCar> traffic, TrafficCar car) {
+        TrafficCar closest = null;
+        for (TrafficCar other : traffic) {
+            if (other == car || other.getY() >= car.getY()) {
+                continue; // itself, or a car behind us
+            }
+            boolean sideBySide = other.getX() < car.getX() + car.getWidth()
+                              && car.getX() < other.getX() + other.getWidth();
+            if (sideBySide && (closest == null || other.getY() > closest.getY())) {
+                closest = other; // the lowest car above us = the one right in front
+            }
+        }
+        return closest;
     }
 
     /** True if no OTHER car in that lane is close to this car (above or below it). */

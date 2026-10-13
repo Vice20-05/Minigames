@@ -118,15 +118,18 @@ public class GamePanel extends JPanel implements ActionListener {
         road.update(player.getSpeed() * GameConfig.PIXELS_PER_KMH);
 
         // Maybe add a new traffic car
-        spawner.update(traffic);
+        spawner.update(traffic, getScore());
 
-        // After LANE_CHANGE_SCORE points some cars switch lanes
-        spawner.updateLaneChanges(traffic, getScore());
+        // Cars that were picked to switch lanes do it when they reach their spot
+        spawner.updateLaneChanges(traffic);
 
         // Move every traffic car
         for (TrafficCar car : traffic) {
             car.update(player.getSpeed());
         }
+
+        // Faster cars brake behind slower ones, so traffic never overlaps
+        spawner.keepDistance(traffic);
 
         // Delete cars that left the screen ("removeIf" = remove every car where the test is true)
         traffic.removeIf(TrafficCar::isOffScreen);

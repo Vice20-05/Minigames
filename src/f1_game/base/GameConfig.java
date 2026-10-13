@@ -65,10 +65,15 @@ public class GameConfig {
     public static final double TRAFFIC_MIN_SPEED = 50;  // km/h
     public static final double TRAFFIC_MAX_SPEED = 100; // km/h
     public static final int SPAWN_EVERY_TICKS = 25;     // try to spawn a car every 45 frames (~0.75 s)
+    // A faster car behind a slower one brakes to the slower car's speed, so they never overlap.
+    public static final double TRAFFIC_FOLLOW_DISTANCE = CAR_HEIGHT / 2.0; // pixels of space it keeps to the car in front
+    public static final double TRAFFIC_ACCELERATION = 0.2; // km/h per frame it speeds back up when the road is free
 
-    // Lane changes: once your score reaches LANE_CHANGE_SCORE, traffic cars sometimes switch lanes.
+    // Lane changes: cars that appear after LANE_CHANGE_SCORE points can switch lanes.
+    // Every new car rolls the dice ONCE: only some of them become lane-changers,
+    // and each one switches at its own random spot on the screen (not all at the same time).
     public static final double LANE_CHANGE_SCORE = 500;   // score where lane changes start
-    public static final double LANE_CHANGE_CHANCE = 0.06; // chance per car per frame (0.01 = 1%)
+    public static final double LANE_CHANGE_CHANCE = 0.35; // chance that a new car will switch lanes (0.35 = 35%)
     public static final double LANE_CHANGE_SPEED = 1.0;   // pixels per frame sideways (smaller = slower, easier to dodge)
 
     // ---------------- Score ----------------

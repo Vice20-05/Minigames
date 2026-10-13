@@ -79,4 +79,8 @@ public abstract class GameObject {
     public double getY() {
         return y;
     }
+
+    public int getWidth() {
+        return width;
+    }
 }
