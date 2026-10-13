@@ -73,8 +73,8 @@ public class GameConfig {
     // Every new car rolls the dice ONCE: only some of them become lane-changers,
     // and each one switches at its own random spot on the screen (not all at the same time).
     public static final double LANE_CHANGE_SCORE = 500;   // score where lane changes start
-    public static final double LANE_CHANGE_CHANCE = 0.35; // chance that a new car will switch lanes (0.35 = 35%)
-    public static final double LANE_CHANGE_SPEED = 1.0;   // pixels per frame sideways (smaller = slower, easier to dodge)
+    public static final double LANE_CHANGE_CHANCE = 0.45; // chance that a new car will switch lanes (0.35 = 35%)
+    public static final double LANE_CHANGE_SPEED = 1.60;   // pixels per frame sideways (smaller = slower, easier to dodge)
 
     // ---------------- Score ----------------
     public static final double POINTS_PER_SECOND = 10;  // base points while driving
