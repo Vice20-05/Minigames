@@ -7,6 +7,9 @@ Hi Victor! This file explains the starting code for Game 1 from
 minigames-plan.md (the top-down traffic racer). Read it from top to
 bottom one time. After that you can use it to look things up.
 
+NEED TO ADD ROADBLOCKS -> traffic in that lane stops  after the roadblock stuff like a pothole or something, if you hit them 
+you will get a game over
+
 CONTENTS
   1. What is this?
   2. How to run the game
