@@ -36,23 +36,6 @@ public class Road {
         roadImage=ImageLoader.load(ROAD_PATH);
     }
 
-    /** Copy constructor: same pictures, same scroll position. Used by snapshot(). */
-    private Road(Road other) {
-        backgroundImage = other.backgroundImage;
-        roadImage = other.roadImage;
-        scrollOffset = other.scrollOffset;
-        roadImageOffset = other.roadImageOffset;
-    }
-
-    /**
-     * A frozen copy of the road for the road thread (RoadRenderer).
-     * The game loop keeps changing THIS road every frame, but nobody changes the copy,
-     * so the road thread can paint it without the two threads getting in each other's way.
-     */
-    public Road snapshot() {
-        return new Road(this);
-    }
-
     /**
      * Moves the lane lines down.
      * @param pixels how many pixels to move this frame (bigger = faster)
@@ -101,6 +84,8 @@ public class Road {
      * Draws the background picture on the WHOLE panel, LEFT and RIGHT of the road.
      * This is in SCREEN pixels (not game pixels), because in fullscreen the panel
      * is much wider than the game and the picture fills the extra space too.
+     *
+     * Only called when the panel size changes: BackgroundCache keeps the result.
      *
      * The pictures are lined up starting at the road's edges and going outwards,
      * so the picture right next to the road is never cut on the road side.

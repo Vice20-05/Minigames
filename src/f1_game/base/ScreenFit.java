@@ -5,8 +5,8 @@ package f1_game.base;
  *
  * The game gets bigger by "scale" so it fills the height, and moves to the middle by
  * "offsetX"/"offsetY". The extra space on the sides gets the background.
- * Both the road thread (RoadRenderer) and paintComponent (GamePanel) need these numbers,
- * so they live in one place and the road and the cars always line up.
+ * Both BackgroundCache (the grass) and paintComponent (GamePanel) need these numbers,
+ * so they live in one place and the grass, the road and the cars always line up.
  *
  * "record" = a small class that only holds values (Java makes the constructor and getters).
  */

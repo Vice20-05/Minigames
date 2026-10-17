@@ -6,14 +6,16 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.Toolkit;
+import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
-import javax.swing.Timer;
 
 /**
  * GamePanel = the HEART of the game. It is the "canvas" inside the window.
@@ -22,12 +24,16 @@ import javax.swing.Timer;
  *   1) UPDATE -> move everything, check crashes, add score   (updateGame)
  *   2) DRAW   -> paint everything on the screen               (paintComponent)
  *
- * We use ONE javax.swing.Timer for the loop (the plan says: one timer drives everything).
- * Every TICK_MS milliseconds the Timer calls actionPerformed(...).
+ * ONE loop drives everything: the "game-loop" thread wakes up exactly every TICK_NANOS
+ * (1/60 s) and asks the Swing thread to run tick() = update + draw. See runLoop().
  */
-public class GamePanel extends JPanel implements ActionListener {
+public class GamePanel extends JPanel {
 
-    private final Timer timer;
+    // The game loop thread. It only keeps the beat, all game work happens on the Swing thread.
+    private final Thread loopThread = new Thread(this::runLoop, "game-loop");
+    private volatile boolean running; // volatile = the loop thread always sees the newest value
+    // true while a tick is waiting for / running on the Swing thread (so ticks never pile up)
+    private final AtomicBoolean tickQueued = new AtomicBoolean(false);
     private final KeyHandler keys = new KeyHandler();
 
     // Everything that lives in the game:
@@ -49,9 +55,8 @@ public class GamePanel extends JPanel implements ActionListener {
     private String popupText = "";   // what is written
     private int nearMissCount;       // how many near misses this run (shown at game over)
 
-    // Paints the road on its own background thread (see RoadRenderer).
-    // "this::repaint" = when a new road picture is ready, call our repaint().
-    private final RoadRenderer roadRenderer = new RoadRenderer(this::repaint);
+    // The grass next to the road, painted once and then only copied (see BackgroundCache).
+    private final BackgroundCache background = new BackgroundCache();
 
     // false while the pictures are still loading on the background thread -> "Loading..." screen
     private boolean loaded = false;
@@ -65,8 +70,7 @@ public class GamePanel extends JPanel implements ActionListener {
 
         loadImagesInBackground(); // resetGame() is called when the loading is done
 
-        // "this" = this GamePanel is the ActionListener, so the Timer calls our actionPerformed.
-        timer = new Timer(GameConfig.TICK_MS, this);
+        loopThread.setDaemon(true); // a daemon thread doesn't keep the program running after the window closes
     }
 
     /**
@@ -110,13 +114,44 @@ public class GamePanel extends JPanel implements ActionListener {
     /** Starts the game loop. Called by GameWindow after the window is visible. */
     public void start() {
         requestFocusInWindow(); // ask for keyboard focus
-        timer.start();
+        running = true;
+        loopThread.start();
     }
 
     /** Stops the game loop when the containing window is closed. */
     public void stop() {
-        timer.stop();
-        roadRenderer.stop();
+        running = false;
+    }
+
+    /**
+     * Runs on the "game-loop" thread: keeps a steady beat of exactly FPS ticks per second.
+     *
+     * WHY NOT a javax.swing.Timer? A Timer only counts whole milliseconds, so "every 16 ms"
+     * is 62.5 ticks per second while the screen shows 60 frames. Every second ~2-3 ticks
+     * were never shown, and the road jumped a bit each time (stutter). Here we count in
+     * nanoseconds, so it's exactly 60.
+     *
+     * The game objects are only touched on the Swing thread (inside tick()), so the two
+     * threads never fight over them. If the Swing thread is still busy with the last tick,
+     * this one is skipped instead of queued, so it can never pile up and freeze the game.
+     */
+    private void runLoop() {
+        long nextTick = System.nanoTime();
+        while (running) {
+            if (tickQueued.compareAndSet(false, true)) { // "if no tick is waiting, queue one" in ONE step
+                SwingUtilities.invokeLater(this::tick);
+            } else {
+                PerfMonitor.onTickSkipped();
+            }
+
+            nextTick += GameConfig.TICK_NANOS;
+            long wait = nextTick - System.nanoTime();
+            if (wait > 0) {
+                LockSupport.parkNanos(wait); // sleep until the next tick (more exact than Thread.sleep)
+            } else if (wait < -GameConfig.TICK_NANOS * 5) {
+                nextTick = System.nanoTime(); // way behind (e.g. the PC froze): don't try to catch up
+            }
+        }
     }
 
     /** Puts everything back to the beginning (used at start and after a crash). */
@@ -135,16 +170,22 @@ public class GamePanel extends JPanel implements ActionListener {
         nearMissCount = 0;
     }
 
-    /** The Timer calls this 60 times per second. */
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        if (!loaded) {
-            return; // pictures still loading, nothing to update yet
+    /** One frame, 60 times per second, on the Swing thread (queued by runLoop). */
+    private void tick() {
+        try {
+            PerfMonitor.onTick(); // dev overlay timing (F3, see PerfMonitor)
+            if (loaded) { // pictures still loading -> nothing to update yet, only draw "Loading..."
+                long updateStart = System.nanoTime();
+                updateGame();
+                PerfMonitor.onUpdate(System.nanoTime() - updateStart);
+            }
+            // Draw NOW (repaint() would only say "draw soon"), so every update gets exactly one frame.
+            paintImmediately(0, 0, getWidth(), getHeight());
+            // Linux: push the frame to the screen right away instead of letting it wait in a buffer.
+            Toolkit.getDefaultToolkit().sync();
+        } finally {
+            tickQueued.set(false); // the loop may queue the next tick, even if this one crashed
         }
-        updateGame();
-        // Hand the road to the road thread. When it's painted, the road thread calls
-        // repaint() ("please call paintComponent soon"), which then also draws the cars.
-        roadRenderer.requestFrame(road, getWidth(), getHeight());
     }
 
     // =====================================================================
@@ -294,6 +335,8 @@ public class GamePanel extends JPanel implements ActionListener {
      */
     @Override
     protected void paintComponent(Graphics graphics) {
+        PerfMonitor.onFrameStart(); // dev overlay timing (F3, see PerfMonitor)
+        long paintStart = System.nanoTime();
         super.paintComponent(graphics); // clears the old frame
         Graphics2D g = (Graphics2D) graphics; // Graphics2D has more features than Graphics
 
@@ -306,20 +349,23 @@ public class GamePanel extends JPanel implements ActionListener {
         // (fullscreen), ScreenFit tells us how much to zoom ("scale") and where the middle is.
         ScreenFit fit = ScreenFit.of(getWidth(), getHeight());
 
-        // Background + road (very back). The road thread already painted them into a
-        // picture, here we only copy that picture onto the screen.
-        roadRenderer.draw(g);
-
         // From here on we draw in GAME pixels: move + zoom the "pen", and don't draw outside the game.
-        g.translate(fit.offsetX(), fit.offsetY());
-        g.scale(fit.scale(), fit.scale());
-        g.clipRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
-
+        AffineTransform screenPixels = g.getTransform(); // remember, for the dev overlay at the end
         if (!loaded) {
+            g.translate(fit.offsetX(), fit.offsetY());
+            g.scale(fit.scale(), fit.scale());
             drawLoadingScreen(g); // the game objects don't exist yet
             return;
         }
 
+        // Grass (very back): painted once, here only copied onto the screen (see BackgroundCache).
+        background.draw(g, road, getWidth(), getHeight());
+
+        g.translate(fit.offsetX(), fit.offsetY());
+        g.scale(fit.scale(), fit.scale());
+        g.clipRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
+
+        road.draw(g);               // asphalt + lane lines
         for (Obstacle obstacle : obstacles) {
             obstacle.draw(g);       // on the ground, so below the cars
         }
@@ -335,6 +381,12 @@ public class GamePanel extends JPanel implements ActionListener {
         if (gameOver) {
             drawGameOver(g);
         }
+
+        // Dev overlay (F3, see PerfMonitor). Back to screen pixels for the numbers.
+        g.setTransform(screenPixels);
+        g.setClip(null);
+        PerfMonitor.draw(g, getHeight());
+        PerfMonitor.onPaintDone(System.nanoTime() - paintStart, getWidth(), getHeight());
     }
 
     /** HUD = the text on top of the game (speed, score, time). */

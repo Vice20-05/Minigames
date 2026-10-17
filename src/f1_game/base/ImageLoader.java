@@ -1,5 +1,8 @@
 package f1_game.base;
 
+import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
+import java.awt.Transparency;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -49,7 +52,7 @@ public class ImageLoader {
             File file = new File(folder, imagePath);
             if (file.isFile()) {
                 try {
-                    return ImageIO.read(file);
+                    return toFastFormat(ImageIO.read(file));
                 } catch (IOException e) {
                     break; // the file exists but is not a valid picture
                 }
@@ -100,7 +103,7 @@ public class ImageLoader {
             }
             try {
                 // ImageIO.read turns the file into a picture Java can draw.
-                BufferedImage image = ImageIO.read(file);
+                BufferedImage image = toFastFormat(ImageIO.read(file));
                 // It gives null if the file is not a real picture (e.g. a broken .png).
                 if (image != null) {
                     images.add(image);
@@ -112,6 +115,35 @@ public class ImageLoader {
         }
         // copyOf = a list nobody can change, so several threads can safely share it
         return List.copyOf(images);
+    }
+
+    /**
+     * PNGs come in many formats (ours are mostly "8-bit colormap"). Java has to convert
+     * those EVERY time they are drawn, which is slow, especially when scaled in fullscreen.
+     * So we convert each picture ONCE, right after loading, into the format the screen uses.
+     */
+    private static BufferedImage toFastFormat(BufferedImage image) {
+        if (image == null) {
+            return null; // not a real picture, ImageIO.read gave null
+        }
+        BufferedImage fast = createImage(image.getWidth(), image.getHeight(), Transparency.TRANSLUCENT);
+        Graphics2D g = fast.createGraphics();
+        g.drawImage(image, 0, 0, null);
+        g.dispose();
+        return fast;
+    }
+
+    /**
+     * A new empty picture in the screen's own format ("compatible image"), the fastest to draw.
+     * transparency: Transparency.OPAQUE (no see-through parts) or Transparency.TRANSLUCENT.
+     */
+    public static BufferedImage createImage(int width, int height, int transparency) {
+        if (GraphicsEnvironment.isHeadless()) { // no screen at all (e.g. a test), use a normal picture
+            int type = transparency == Transparency.OPAQUE ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB;
+            return new BufferedImage(width, height, type);
+        }
+        return GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
+                .getDefaultConfiguration().createCompatibleImage(width, height, transparency);
     }
 
     // Only static methods, so nobody needs to create an ImageLoader.

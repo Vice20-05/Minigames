@@ -22,7 +22,7 @@ public class GameConfig {
 
     // ---------------- Game loop ----------------
     public static final int FPS = 60;              // frames (updates) per second
-    public static final int TICK_MS = 1000 / FPS;  // milliseconds between two frames (~16 ms)
+    public static final long TICK_NANOS = 1_000_000_000L / FPS; // nanoseconds between two frames (~16.7 ms)
 
     // ---------------- Road ----------------
     public static final int LANE_COUNT = 2;
