@@ -44,7 +44,7 @@ public class GamePanel extends JPanel {
     private List<Obstacle> obstacles;           // roadblocks + potholes on the road
     private RoadblockSpawner roadblockSpawner;
 
-    private double baseScore;  // points from time only, WITHOUT the multiplier (see getScore)
+    private double score;      // every point already has the multiplier in it, so it never goes down
     private int ticks;         // how many frames since the start (ticks / FPS = seconds)
     private boolean gameOver;
     private boolean started;   // false until the player presses W the first time
@@ -162,7 +162,7 @@ public class GamePanel extends JPanel {
         spawner = new TrafficSpawner();
         obstacles = new ArrayList<>();
         roadblockSpawner = new RoadblockSpawner();
-        baseScore = 0;
+        score = 0;
         ticks = 0;
         gameOver = false;
         started = false; // after a restart (R) we wait for W again
@@ -257,15 +257,17 @@ public class GamePanel extends JPanel {
 
     /**
      * When the WHOLE work zone is behind the player (the pothole is the last part),
-     * the player gets a small speed boost. Each work zone only once (markPassed).
+     * the player gets points and a small speed boost. Each work zone only once (markPassed).
      */
     private void checkRoadblockPassed() {
         for (Obstacle obstacle : obstacles) {
             boolean behindPlayer = obstacle.getY() > player.getBottomY();
             if (!obstacle.isRoadblock() && !obstacle.isPassed() && behindPlayer) {
                 obstacle.markPassed();
+                int points = addPoints(GameConfig.ROADBLOCK_CLEAR_BONUS);
                 player.addSpeedBoost(GameConfig.ROADBLOCK_PASS_BOOST);
-                showPopup("CLEARED! +" + (int) GameConfig.ROADBLOCK_PASS_BOOST + " km/h", GameConfig.POPUP_TICKS);
+                showPopup("CLEARED! +" + points + "  +" + (int) GameConfig.ROADBLOCK_PASS_BOOST + " km/h",
+                          GameConfig.POPUP_TICKS);
             }
         }
     }
@@ -289,30 +291,33 @@ public class GamePanel extends JPanel {
             // Near miss = the traffic car touches the player's BIGGER box (but not the car itself).
             // !car.hasNearMissed() makes sure each car gives the bonus only once.
             if (player.getNearMissBounds().intersects(car.getBounds()) && !car.hasNearMissed()) {
-                baseScore += GameConfig.NEAR_MISS_BONUS;
+                int points = addPoints(GameConfig.NEAR_MISS_BONUS);
                 car.markNearMissed(); // this car is done, no more bonus from it
 
-                // Show "NEAR MISS! +points" on screen. The bonus goes into baseScore,
-                // so on screen it is worth NEAR_MISS_BONUS x the multiplier.
                 nearMissCount++;
-                int points = (int) (GameConfig.NEAR_MISS_BONUS * getMultiplier());
                 showPopup("NEAR MISS! +" + points, GameConfig.NEAR_MISS_POPUP_TICKS);
             }
         }
     }
 
+    /** Points for driving: POINTS_PER_SECOND every second, times the multiplier. */
     private void updateScore() {
-        double pointsThisFrame = GameConfig.POINTS_PER_SECOND / GameConfig.FPS;
-        baseScore += pointsThisFrame;
+        addPoints(GameConfig.POINTS_PER_SECOND / GameConfig.FPS);
     }
 
     /**
-     * The score you see = base points x the multiplier RIGHT NOW.
-     * Example: 10 base points at x2.0 -> 20. Brake back to x1.0 -> 10 again.
-     * After a crash nothing moves anymore, so the multiplier at the crash is the final one.
+     * Adds points x the multiplier RIGHT NOW and gives back how many were added (for popups).
+     * The multiplier is used only at the moment the points are earned. So braking later
+     * doesn't take anything away: the score only goes up (time, near misses, cleared roadblocks).
      */
+    private int addPoints(double basePoints) {
+        double points = basePoints * getMultiplier();
+        score += points;
+        return (int) points;
+    }
+
     private double getScore() {
-        return baseScore * getMultiplier();
+        return score;
     }
 
     /**

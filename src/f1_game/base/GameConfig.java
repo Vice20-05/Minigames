@@ -110,6 +110,7 @@ public class GameConfig {
     public static final double POINTS_PER_SECOND = 10;  // base points while driving
     public static final double MAX_MULTIPLIER = 4.0;    // the speed bonus never goes above this
     public static final double NEAR_MISS_BONUS = 100;    // points for a near-miss (player car and traffic car almost touch)
+    public static final double ROADBLOCK_CLEAR_BONUS = 100; // points for getting past a whole work zone
     public static final int NEAR_MISS_POPUP_TICKS = 60; // how long "NEAR MISS!" stays on screen (60 = 1 second)
     public static final int NEAR_MISS_MARGIN = 24;      // how many pixels around your car count as "near" (bigger = easier)
 
