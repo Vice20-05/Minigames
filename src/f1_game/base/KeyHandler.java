@@ -22,6 +22,9 @@ public class KeyHandler extends KeyAdapter {
 
     @Override
     public void keyPressed(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_F3) {
+            PerfMonitor.toggle(); // dev overlay: frame timing numbers
+        }
         setKey(e.getKeyCode(), true);
     }
 

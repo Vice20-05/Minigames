@@ -1,0 +1,6 @@
+{
+    // The Java code lives in "src" (packages f1_game.*). Saying it here makes VS Code
+    // re-scan the project when this file changes, so new .java files are found.
+    "java.project.sourcePaths": ["src"],
+    "java.configuration.updateBuildConfiguration": "automatic"
+}

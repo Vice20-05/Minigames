@@ -26,14 +26,16 @@ public class Road {
     private double scrollOffset = 0;
 
     private  double roadImageOffset=0;
-    
-    
+
+    public static final String BACKGROUND_PATH = "Resorces/Textures/f1game_grass_background/background.png";
+    // road.png doesn't exist yet -> a gray road is drawn until you add it
+    public static final String ROAD_PATH = "Resorces/Textures/f1game_grass_background/road.png";
+
     public Road(){
-        backgroundImage=ImageLoader.load("Resorces/Textures/f1game_grass_background/background.png");
-        // road.png doesn't exist yet -> a gray road is drawn until you add it
-        roadImage=ImageLoader.load("Resorces/Textures/f1game_grass_background/road.png");
+        backgroundImage=ImageLoader.load(BACKGROUND_PATH);
+        roadImage=ImageLoader.load(ROAD_PATH);
     }
-    
+
     /**
      * Moves the lane lines down.
      * @param pixels how many pixels to move this frame (bigger = faster)
@@ -82,6 +84,8 @@ public class Road {
      * Draws the background picture on the WHOLE panel, LEFT and RIGHT of the road.
      * This is in SCREEN pixels (not game pixels), because in fullscreen the panel
      * is much wider than the game and the picture fills the extra space too.
+     *
+     * Only called when the panel size changes: BackgroundCache keeps the result.
      *
      * The pictures are lined up starting at the road's edges and going outwards,
      * so the picture right next to the road is never cut on the road side.
