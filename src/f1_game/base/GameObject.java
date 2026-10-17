@@ -83,4 +83,9 @@ public abstract class GameObject {
     public int getWidth() {
         return width;
     }
+
+    /** y of the bottom edge (the back bumper for a car). */
+    public double getBottomY() {
+        return y + height;
+    }
 }

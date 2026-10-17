@@ -72,9 +72,39 @@ public class GameConfig {
     // Lane changes: cars that appear after LANE_CHANGE_SCORE points can switch lanes.
     // Every new car rolls the dice ONCE: only some of them become lane-changers,
     // and each one switches at its own random spot on the screen (not all at the same time).
-    public static final double LANE_CHANGE_SCORE = 500;   // score where lane changes start
-    public static final double LANE_CHANGE_CHANCE = 0.45; // chance that a new car will switch lanes (0.35 = 35%)
+    // The chance GROWS with the score: rare at 500 points, a bit more every 150 points, until the max.
+    //   500 -> 8%   650 -> 12%   800 -> 16%   ...   ~2600 and up -> 35% (so most cars still drive straight)
+    public static final double LANE_CHANGE_SCORE = 500;          // score where lane changes start
+    public static final double LANE_CHANGE_START_CHANCE = 0.08;  // chance at LANE_CHANGE_SCORE (0.08 = 8% of new cars)
+    public static final double LANE_CHANGE_STEP_SCORE = 150;     // every this many points...
+    public static final double LANE_CHANGE_STEP_CHANCE = 0.04;   // ...the chance goes up by this much (+4%)
+    public static final double LANE_CHANGE_MAX_CHANCE = 0.35;    // the chance never goes above this
     public static final double LANE_CHANGE_SPEED = 1.60;   // pixels per frame sideways (smaller = slower, easier to dodge)
+
+    // Braking: a car starts slowing down this far (pixels) behind something slower in its lane,
+    // and reaches its speed at TRAFFIC_FOLLOW_DISTANCE. Bigger = brakes earlier and softer.
+    public static final double TRAFFIC_BRAKE_DISTANCE = CAR_HEIGHT * 3;
+
+    // ---------------- Roadblocks (work zones) ----------------
+    // From ROADBLOCK_SCORE on, now and then one lane gets a roadblock with a pothole behind it.
+    // Traffic in that lane brakes and stops in a queue, the other lane keeps driving.
+    // Hitting the roadblock or the pothole = game over.
+    public static final double ROADBLOCK_SCORE = 1000;           // score where roadblocks start
+    public static final int ROADBLOCK_MIN_WAIT_TICKS = 4 * FPS;  // wait at least 4 s between two roadblocks...
+    public static final int ROADBLOCK_MAX_WAIT_TICKS = 10 * FPS; // ...and at most 10 s (random in between)
+    public static final int ROADBLOCK_WIDTH = LANE_WIDTH - 30;   // the barrier almost fills its lane
+    public static final int POTHOLE_WIDTH = 70;
+    public static final int POTHOLE_GAP = 25;                    // pixels between the barrier and the pothole behind it
+
+    // While a roadblock is on the road, new cars in the OTHER lane drive a bit faster, so you have
+    // to time your lane switch. Nothing extra below 2000 points, then up to +10 km/h more for
+    // every 1000 points (random, so not every car is the same), but never more than the max.
+    public static final double OPEN_LANE_BONUS_PER_1000 = 10;    // km/h
+    public static final double OPEN_LANE_MAX_BONUS = 40;         // km/h
+
+    // Getting past a roadblock gives a small speed boost.
+    public static final double ROADBLOCK_PASS_BOOST = 15;        // km/h
+    public static final int POPUP_TICKS = 60;                    // how long a popup text stays (60 = 1 second)
 
     // ---------------- Score ----------------
     public static final double POINTS_PER_SECOND = 10;  // base points while driving

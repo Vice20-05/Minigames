@@ -21,11 +21,12 @@ public class PlayerCar extends GameObject {
     // Holding A/D changes it a little every frame, so turning starts soft and gets stronger.
     private double steerSpeed;
 
+    public static final String IMAGE_PATH = "Resorces/Textures/f1_game_playerCar/f1.png";
+
     public PlayerCar() {
         // "super(...)" calls the constructor of the parent class (GameObject).
-        // imagePath is null for now -> red placeholder box.
-        // When the art is ready, change null to e.g. "Resorces/Textures/player.png".
-        super(0, GameConfig.PLAYER_Y, GameConfig.CAR_WIDTH, GameConfig.CAR_HEIGHT, Color.RED, "Resorces/Textures/f1_game_playerCar/f1.png");
+        // If the picture is missing -> red placeholder box.
+        super(0, GameConfig.PLAYER_Y, GameConfig.CAR_WIDTH, GameConfig.CAR_HEIGHT, Color.RED, IMAGE_PATH);
 
         x = Road.laneCenterX(1) - width / 2.0; // start in the middle of the second lane
         speed = 0;
@@ -112,5 +113,10 @@ public class PlayerCar extends GameObject {
 
     public double getSpeed() {
         return speed;
+    }
+
+    /** A small instant speed-up (used after getting past a roadblock). Never above MAX_SPEED. */
+    public void addSpeedBoost(double kmh) {
+        speed = Math.min(speed + kmh, GameConfig.MAX_SPEED);
     }
 }

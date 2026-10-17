@@ -26,14 +26,33 @@ public class Road {
     private double scrollOffset = 0;
 
     private  double roadImageOffset=0;
-    
-    
+
+    public static final String BACKGROUND_PATH = "Resorces/Textures/f1game_grass_background/background.png";
+    // road.png doesn't exist yet -> a gray road is drawn until you add it
+    public static final String ROAD_PATH = "Resorces/Textures/f1game_grass_background/road.png";
+
     public Road(){
-        backgroundImage=ImageLoader.load("Resorces/Textures/f1game_grass_background/background.png");
-        // road.png doesn't exist yet -> a gray road is drawn until you add it
-        roadImage=ImageLoader.load("Resorces/Textures/f1game_grass_background/road.png");
+        backgroundImage=ImageLoader.load(BACKGROUND_PATH);
+        roadImage=ImageLoader.load(ROAD_PATH);
     }
-    
+
+    /** Copy constructor: same pictures, same scroll position. Used by snapshot(). */
+    private Road(Road other) {
+        backgroundImage = other.backgroundImage;
+        roadImage = other.roadImage;
+        scrollOffset = other.scrollOffset;
+        roadImageOffset = other.roadImageOffset;
+    }
+
+    /**
+     * A frozen copy of the road for the road thread (RoadRenderer).
+     * The game loop keeps changing THIS road every frame, but nobody changes the copy,
+     * so the road thread can paint it without the two threads getting in each other's way.
+     */
+    public Road snapshot() {
+        return new Road(this);
+    }
+
     /**
      * Moves the lane lines down.
      * @param pixels how many pixels to move this frame (bigger = faster)

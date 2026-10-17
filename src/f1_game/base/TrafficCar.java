@@ -100,30 +100,48 @@ public class TrafficCar extends GameObject {
     }
 
     /**
-     * Keeps a safe distance to the car in front of us (in the same lane), so cars never overlap.
-     * @param carAhead the closest car in front of us in our lane, or null if the lane is free
+     * Keeps a safe distance to whatever is in front of us (a slower car, or a roadblock that
+     * doesn't move at all), so we never drive into it. We brake SOFTLY: the closer we get,
+     * the slower we are allowed to drive.
+     *
+     *   gap >= TRAFFIC_BRAKE_DISTANCE   -> far away, drive normally
+     *   gap in between                  -> the closer, the slower (a roadblock: down to almost 0)
+     *   gap <= TRAFFIC_FOLLOW_DISTANCE  -> as slow as the thing in front (a roadblock: we stop)
+     *
+     * @param aheadBottomY the y of its back edge (in front = higher on the screen = smaller y)
+     * @param aheadSpeed   its speed in km/h (0 for a roadblock)
      */
-    public void followCar(TrafficCar carAhead) {
-        if (carAhead == null) {
-            speedBackUp();
-            return;
-        }
-
-        // Empty space between their back bumper and our front bumper.
-        // (In front = higher on the screen = smaller y.)
-        double gap = y - (carAhead.y + carAhead.height);
+    public void followAhead(double aheadBottomY, double aheadSpeed) {
+        // Empty space between their back and our front bumper.
+        double gap = y - aheadBottomY;
 
         if (gap < 0) {
             // Already overlapping (can happen right after a lane change):
             // put us right behind them and drive at their speed.
-            y = carAhead.y + carAhead.height;
-            speed = Math.min(speed, carAhead.speed);
-        } else if (gap < GameConfig.TRAFFIC_FOLLOW_DISTANCE) {
-            // Too close: slow down to their speed, so the gap stops shrinking.
-            speed = Math.min(speed, carAhead.speed);
-        } else {
-            speedBackUp(); // enough space, drive normally again
+            y = aheadBottomY;
+            speed = Math.min(speed, aheadSpeed);
+            return;
         }
+
+        double allowedSpeed;
+        if (gap <= GameConfig.TRAFFIC_FOLLOW_DISTANCE) {
+            allowedSpeed = aheadSpeed;
+        } else if (gap < GameConfig.TRAFFIC_BRAKE_DISTANCE) {
+            // 0.0 at the follow distance, 1.0 at the brake distance
+            double howFar = (gap - GameConfig.TRAFFIC_FOLLOW_DISTANCE)
+                          / (GameConfig.TRAFFIC_BRAKE_DISTANCE - GameConfig.TRAFFIC_FOLLOW_DISTANCE);
+            allowedSpeed = aheadSpeed + howFar * (cruiseSpeed - aheadSpeed);
+        } else {
+            allowedSpeed = cruiseSpeed;
+        }
+
+        // Braking happens at once (speed drops to allowedSpeed), speeding up happens slowly.
+        speed = Math.min(speed + GameConfig.TRAFFIC_ACCELERATION, Math.min(allowedSpeed, cruiseSpeed));
+    }
+
+    /** Nothing in front of us: speed back up to the cruise speed. */
+    public void driveFreely() {
+        speedBackUp();
     }
 
     /** Slowly speed up again until we are back at our cruise speed. */
@@ -133,6 +151,10 @@ public class TrafficCar extends GameObject {
 
     public int getLane() {
         return lane;
+    }
+
+    public double getSpeed() {
+        return speed;
     }
 
     public boolean hasChangedLane() {

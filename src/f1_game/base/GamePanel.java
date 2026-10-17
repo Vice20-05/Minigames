@@ -10,7 +10,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import javax.swing.JPanel;
+import javax.swing.SwingWorker;
 import javax.swing.Timer;
 
 /**
@@ -33,16 +35,26 @@ public class GamePanel extends JPanel implements ActionListener {
     private PlayerCar player;
     private List<TrafficCar> traffic;
     private TrafficSpawner spawner;
+    private List<Obstacle> obstacles;           // roadblocks + potholes on the road
+    private RoadblockSpawner roadblockSpawner;
 
     private double baseScore;  // points from time only, WITHOUT the multiplier (see getScore)
     private int ticks;         // how many frames since the start (ticks / FPS = seconds)
     private boolean gameOver;
     private boolean started;   // false until the player presses W the first time
 
-    // Near miss on screen: "NEAR MISS! +50" shows for a moment after every near miss.
-    private int nearMissPopupTicks;  // frames left to show the text (0 = hidden)
-    private int nearMissPopupPoints; // the points written in the text
+    // Popup text above the player, for a moment: "NEAR MISS! +50", "ROADBLOCK CLEARED! +15 km/h"
+    private int popupTicks;          // frames left to show the text (0 = hidden)
+    private int popupTotalTicks;     // how long it was shown in total (for the fade out)
+    private String popupText = "";   // what is written
     private int nearMissCount;       // how many near misses this run (shown at game over)
+
+    // Paints the road on its own background thread (see RoadRenderer).
+    // "this::repaint" = when a new road picture is ready, call our repaint().
+    private final RoadRenderer roadRenderer = new RoadRenderer(this::repaint);
+
+    // false while the pictures are still loading on the background thread -> "Loading..." screen
+    private boolean loaded = false;
 
     public GamePanel() {
         setPreferredSize(new Dimension(GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT));
@@ -51,10 +63,48 @@ public class GamePanel extends JPanel implements ActionListener {
         setFocusable(true);       // the panel must have "focus" to receive key presses
         addKeyListener(keys);
 
-        resetGame();
+        loadImagesInBackground(); // resetGame() is called when the loading is done
 
         // "this" = this GamePanel is the ActionListener, so the Timer calls our actionPerformed.
         timer = new Timer(GameConfig.TICK_MS, this);
+    }
+
+    /**
+     * Reads all the pictures from the disk on a BACKGROUND THREAD, so the window opens
+     * right away and doesn't freeze while the files load.
+     *
+     * SwingWorker is Swing's helper for this:
+     *   doInBackground() -> runs on a background thread (slow work: reading files)
+     *   done()           -> runs on the Swing thread afterwards (safe to touch the game again)
+     *
+     * ImageLoader remembers every picture, so the "new Road()", "new TrafficSpawner()"...
+     * in resetGame() just take them from memory: no loading on the Swing thread, also not on restart.
+     */
+    private void loadImagesInBackground() {
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                ImageLoader.load(PlayerCar.IMAGE_PATH);
+                ImageLoader.load(Road.BACKGROUND_PATH);
+                ImageLoader.load(Road.ROAD_PATH);
+                ImageLoader.loadFolder(TrafficSpawner.TRAFFIC_FOLDER);
+                ImageLoader.load(RoadblockSpawner.ROADBLOCK_PATH);
+                ImageLoader.load(RoadblockSpawner.POTHOLE_PATH);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get(); // throws if doInBackground crashed
+                } catch (InterruptedException | ExecutionException e) {
+                    System.out.println("Loading pictures failed -> using colors instead: " + e);
+                }
+                resetGame();
+                loaded = true;
+                repaint();
+            }
+        }.execute();
     }
 
     /** Starts the game loop. Called by GameWindow after the window is visible. */
@@ -66,6 +116,7 @@ public class GamePanel extends JPanel implements ActionListener {
     /** Stops the game loop when the containing window is closed. */
     public void stop() {
         timer.stop();
+        roadRenderer.stop();
     }
 
     /** Puts everything back to the beginning (used at start and after a crash). */
@@ -74,19 +125,26 @@ public class GamePanel extends JPanel implements ActionListener {
         player = new PlayerCar();
         traffic = new ArrayList<>();
         spawner = new TrafficSpawner();
+        obstacles = new ArrayList<>();
+        roadblockSpawner = new RoadblockSpawner();
         baseScore = 0;
         ticks = 0;
         gameOver = false;
         started = false; // after a restart (R) we wait for W again
-        nearMissPopupTicks = 0;
+        popupTicks = 0;
         nearMissCount = 0;
     }
 
     /** The Timer calls this 60 times per second. */
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (!loaded) {
+            return; // pictures still loading, nothing to update yet
+        }
         updateGame();
-        repaint(); // tells Swing "please call paintComponent soon"
+        // Hand the road to the road thread. When it's painted, the road thread calls
+        // repaint() ("please call paintComponent soon"), which then also draws the cars.
+        roadRenderer.requestFrame(road, getWidth(), getHeight());
     }
 
     // =====================================================================
@@ -117,33 +175,69 @@ public class GamePanel extends JPanel implements ActionListener {
         // Scroll the road based on the player's speed
         road.update(player.getSpeed() * GameConfig.PIXELS_PER_KMH);
 
-        // Maybe add a new traffic car
-        spawner.update(traffic, getScore());
+        // Maybe add a roadblock + pothole (from 1000 points on), and a new traffic car
+        roadblockSpawner.update(obstacles, traffic, getScore());
+        spawner.update(traffic, obstacles, getScore());
 
         // Cars that were picked to switch lanes do it when they reach their spot
-        spawner.updateLaneChanges(traffic);
+        spawner.updateLaneChanges(traffic, obstacles);
 
-        // Move every traffic car
+        // Move every traffic car and every obstacle
         for (TrafficCar car : traffic) {
             car.update(player.getSpeed());
         }
+        for (Obstacle obstacle : obstacles) {
+            obstacle.update(player.getSpeed());
+        }
 
-        // Faster cars brake behind slower ones, so traffic never overlaps
-        spawner.keepDistance(traffic);
+        // Faster cars brake behind slower ones and stop behind roadblocks, so nothing overlaps
+        spawner.keepDistance(traffic, obstacles);
 
-        // Delete cars that left the screen ("removeIf" = remove every car where the test is true)
+        // Delete things that left the screen ("removeIf" = remove every one where the test is true)
         traffic.removeIf(TrafficCar::isOffScreen);
+        obstacles.removeIf(Obstacle::isOffScreen);
 
         checkCollisions();
+        checkRoadblockPassed();
         updateScore();
 
-        // Count down the "NEAR MISS!" text, it disappears when it reaches 0
-        if (nearMissPopupTicks > 0) {
-            nearMissPopupTicks--;
+        // Count down the popup text, it disappears when it reaches 0
+        if (popupTicks > 0) {
+            popupTicks--;
+        }
+    }
+
+    /** Shows a text above the player for "ticks" frames. */
+    private void showPopup(String text, int ticks) {
+        popupText = text;
+        popupTicks = ticks;
+        popupTotalTicks = ticks;
+    }
+
+    /**
+     * When the WHOLE work zone is behind the player (the pothole is the last part),
+     * the player gets a small speed boost. Each work zone only once (markPassed).
+     */
+    private void checkRoadblockPassed() {
+        for (Obstacle obstacle : obstacles) {
+            boolean behindPlayer = obstacle.getY() > player.getBottomY();
+            if (!obstacle.isRoadblock() && !obstacle.isPassed() && behindPlayer) {
+                obstacle.markPassed();
+                player.addSpeedBoost(GameConfig.ROADBLOCK_PASS_BOOST);
+                showPopup("CLEARED! +" + (int) GameConfig.ROADBLOCK_PASS_BOOST + " km/h", GameConfig.POPUP_TICKS);
+            }
         }
     }
 
     private void checkCollisions() {
+        // Roadblock or pothole: always game over, there is no near miss with a wall
+        for (Obstacle obstacle : obstacles) {
+            if (player.getBounds().intersects(obstacle.getBounds())) {
+                gameOver = true;
+                return;
+            }
+        }
+
         for (TrafficCar car : traffic) {
             // intersects = do the two invisible boxes overlap
             if (player.getBounds().intersects(car.getBounds())) {
@@ -160,8 +254,8 @@ public class GamePanel extends JPanel implements ActionListener {
                 // Show "NEAR MISS! +points" on screen. The bonus goes into baseScore,
                 // so on screen it is worth NEAR_MISS_BONUS x the multiplier.
                 nearMissCount++;
-                nearMissPopupPoints = (int) (GameConfig.NEAR_MISS_BONUS * getMultiplier());
-                nearMissPopupTicks = GameConfig.NEAR_MISS_POPUP_TICKS;
+                int points = (int) (GameConfig.NEAR_MISS_BONUS * getMultiplier());
+                showPopup("NEAR MISS! +" + points, GameConfig.NEAR_MISS_POPUP_TICKS);
             }
         }
     }
@@ -209,29 +303,31 @@ public class GamePanel extends JPanel implements ActionListener {
 
         // FULLSCREEN / RESIZING:
         // The game is always WINDOW_WIDTH x WINDOW_HEIGHT "game pixels". If the panel is bigger
-        // (fullscreen), we make the game bigger by "scale" so it fills the height, and move it
-        // to the middle by "offsetX"/"offsetY". The extra space on the sides gets the background.
-        double scale = Math.min((double) getWidth() / GameConfig.WINDOW_WIDTH,
-                                (double) getHeight() / GameConfig.WINDOW_HEIGHT);
-        double offsetX = (getWidth() - GameConfig.WINDOW_WIDTH * scale) / 2;
-        double offsetY = (getHeight() - GameConfig.WINDOW_HEIGHT * scale) / 2;
+        // (fullscreen), ScreenFit tells us how much to zoom ("scale") and where the middle is.
+        ScreenFit fit = ScreenFit.of(getWidth(), getHeight());
 
-        int roadLeftX = (int) Math.round(offsetX + GameConfig.ROAD_X * scale);
-        int roadRightX = (int) Math.round(offsetX + (GameConfig.ROAD_X + GameConfig.ROAD_WIDTH) * scale);
-        int tileSize = Math.max(1, (int) Math.round(GameConfig.BACKGROUND_TILE_SIZE * scale));
-        road.drawBackground(g, getWidth(), getHeight(), roadLeftX, roadRightX, tileSize); // very back
+        // Background + road (very back). The road thread already painted them into a
+        // picture, here we only copy that picture onto the screen.
+        roadRenderer.draw(g);
 
         // From here on we draw in GAME pixels: move + zoom the "pen", and don't draw outside the game.
-        g.translate(offsetX, offsetY);
-        g.scale(scale, scale);
+        g.translate(fit.offsetX(), fit.offsetY());
+        g.scale(fit.scale(), fit.scale());
         g.clipRect(0, 0, GameConfig.WINDOW_WIDTH, GameConfig.WINDOW_HEIGHT);
 
-        road.draw(g);               // back
+        if (!loaded) {
+            drawLoadingScreen(g); // the game objects don't exist yet
+            return;
+        }
+
+        for (Obstacle obstacle : obstacles) {
+            obstacle.draw(g);       // on the ground, so below the cars
+        }
         for (TrafficCar car : traffic) {
             car.draw(g);
         }
         player.draw(g);
-        drawNearMissPopup(g);
+        drawPopup(g);
         drawHud(g);                 // front
         if (!started) {
             drawStartScreen(g);     // "Press W to start" on top of everything
@@ -255,22 +351,29 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     /**
-     * "NEAR MISS! +50" above the player. It floats up and fades out:
-     * the fewer frames are left, the higher and more transparent it is.
+     * The popup ("NEAR MISS! +50", "CLEARED! +15 km/h") above the player. It floats up and
+     * fades out: the fewer frames are left, the higher and more transparent it is.
      */
-    private void drawNearMissPopup(Graphics2D g) {
-        if (nearMissPopupTicks <= 0) {
+    private void drawPopup(Graphics2D g) {
+        if (popupTicks <= 0) {
             return; // nothing to show
         }
-        // 1.0 right after the near miss, going down to 0.0 at the end
-        double timeLeft = (double) nearMissPopupTicks / GameConfig.NEAR_MISS_POPUP_TICKS;
+        // 1.0 right after it appeared, going down to 0.0 at the end
+        double timeLeft = (double) popupTicks / popupTotalTicks;
 
         int alpha = (int) (255 * timeLeft);        // 255 = solid, 0 = invisible
         int floatUp = (int) (40 * (1 - timeLeft)); // moves 40 pixels up over time
 
         g.setColor(new Color(255, 215, 0, alpha)); // gold
         g.setFont(new Font("Arial", Font.BOLD, 24));
-        drawCentered(g, "NEAR MISS! +" + nearMissPopupPoints, GameConfig.PLAYER_Y - 30 - floatUp);
+        drawCentered(g, popupText, GameConfig.PLAYER_Y - 30 - floatUp);
+    }
+
+    /** Shown while the pictures load on the background thread. */
+    private void drawLoadingScreen(Graphics2D g) {
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 32));
+        drawCentered(g, "Loading...", GameConfig.WINDOW_HEIGHT / 2);
     }
 
     /** Shown before the game starts, until W is pressed. */

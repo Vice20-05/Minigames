@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 
 /**
@@ -18,6 +21,14 @@ import javax.imageio.ImageIO;
  */
 public class ImageLoader {
 
+    // MEMORY (cache): every picture is read from the disk only ONCE, after that it comes from here.
+    // So a restart (R) doesn't load everything again and the game doesn't stutter.
+    // ConcurrentHashMap = a HashMap that is safe to use from several threads at once
+    // (GamePanel loads the pictures on a background thread, the game uses them on the Swing thread).
+    // Optional because a missing picture (null) can't be stored in a ConcurrentHashMap.
+    private static final Map<String, Optional<BufferedImage>> imageCache = new ConcurrentHashMap<>();
+    private static final Map<String, List<BufferedImage>> folderCache = new ConcurrentHashMap<>();
+
     /**
      * Returns the picture, or null if the path is null or the file can't be found / read.
      * Null means: draw a colored box instead, the game never crashes because of a picture.
@@ -26,7 +37,12 @@ public class ImageLoader {
         if (imagePath == null) {
             return null;
         }
+        // computeIfAbsent = "if it's not in the memory yet, read it and remember it"
+        return imageCache.computeIfAbsent(imagePath, path -> Optional.ofNullable(readImage(path))).orElse(null);
+    }
 
+    /** Actually reads the picture from the disk. */
+    private static BufferedImage readImage(String imagePath) {
         // Start in the current folder and go up one folder at a time.
         File folder = new File("").getAbsoluteFile();
         while (folder != null) {
@@ -51,6 +67,11 @@ public class ImageLoader {
      * Returns an empty list if the folder can't be found (then we use colored boxes).
      */
     public static List<BufferedImage> loadFolder(String folderPath) {
+        return folderCache.computeIfAbsent(folderPath, ImageLoader::readFolder);
+    }
+
+    /** Actually reads the folder from the disk. */
+    private static List<BufferedImage> readFolder(String folderPath) {
         // The list we fill up and give back. It starts empty.
         List<BufferedImage> images = new ArrayList<>();
 
@@ -89,7 +110,8 @@ public class ImageLoader {
                 System.out.println("Could not load image: " + file.getName());
             }
         }
-        return images;
+        // copyOf = a list nobody can change, so several threads can safely share it
+        return List.copyOf(images);
     }
 
     // Only static methods, so nobody needs to create an ImageLoader.
