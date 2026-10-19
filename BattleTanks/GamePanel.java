@@ -1,10 +1,17 @@
 package minigames;
 
+import java.awt.Font;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.awt.FontFormatException;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -13,6 +20,7 @@ import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Random;
+import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
@@ -43,6 +51,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private static final int PLAYER_TWO_SHAPE_START_X = 700;
     private static final int SHAPE_START_Y = 330;
 
+    // Heart settings (the hearts show the lives of the players)
+    private static final int HEART_SIZE = 24;
+    private static final int SPACE_BETWEEN_HEARTS = 5;
+
     private Tank playerOneTank;
     private Tank playerTwoTank;
     private ArrayList<Bullet> bullets;
@@ -65,6 +77,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private Font livesFont;
     private Font gameOverFont;
 
+    // The pictures (they are loaded in loadImages)
+    private Image backgroundImage;
+    private Image playerOneTankImage;
+    private Image playerTwoTankImage;
+    private Image brickWallImage;
+    private Image steelWallImage;
+    private Image bulletImage;
+    private Image heartImage;
+
     public GamePanel() {
         this.setPreferredSize(new Dimension(ARENA_WIDTH, ARENA_HEIGHT));
         this.setBackground(Color.WHITE);
@@ -80,10 +101,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         playerTwoShiftWasDown = false;
         gameIsOver = false;
         winnerText = "";
-        livesFont = new Font("Arial", Font.BOLD, 18);
-        gameOverFont = new Font("Arial", Font.BOLD, 60);
+        livesFont = new Font("Consolas", Font.BOLD, 16);
+        gameOverFont = new Font("Impact", Font.PLAIN, 70);
         this.addKeyListener(this);
 
+        loadImages();
         createTanks();
         createMainWalls();
 
@@ -92,6 +114,39 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         startBuildPhase(OBJECTS_IN_FIRST_BUILD_PHASE);
 
         setUpTimer();
+    }
+
+    // ---------- Pictures ----------
+
+    // Loads all the pictures once, when the game starts.
+    // The pictures are in the folder src/main/resources/images
+    private void loadImages() {
+        backgroundImage = loadImage("/images/bg.png");
+        playerOneTankImage = loadImage("/images/tank_blue.png");
+        playerTwoTankImage = loadImage("/images/tank_bigRed.png");
+        brickWallImage = loadImage("/images/barrelGreen_side.png");
+        steelWallImage = loadImage("/images/barrelRust_side.png");
+        bulletImage = loadImage("/images/bulletDark1_outline.png");
+        heartImage = loadImage("/images/explosion2.png");
+    }
+
+    // Loads one picture from the given path
+    private Image loadImage(String imagePath) {
+        ImageIcon imageIcon = new ImageIcon(getClass().getResource(imagePath));
+        return imageIcon.getImage();
+    }
+    
+       // Loads a font from a .ttf file. If something goes wrong, a normal font is used instead.
+    private Font loadCustomFont(String fontPath, float fontSize) {
+        try {
+            InputStream fontStream = getClass().getResourceAsStream(fontPath);
+            Font loadedFont = Font.createFont(Font.TRUETYPE_FONT, fontStream);
+            return loadedFont.deriveFont(Font.PLAIN, fontSize);
+         } catch (Exception exception) {
+            System.out.println("Font could not be loaded: " + fontPath);
+            exception.printStackTrace();
+            return new Font("Arial", Font.BOLD, (int) fontSize);
+        }
     }
 
     // Creates both tanks at their starting positions
@@ -592,6 +647,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     // Checks if any bullet touches a tank. Any bullet can hurt any tank,
     // so a bounced bullet can also hit the tank that fired it.
+    // A bullet that hits a tank takes one life and disappears.
+    // The tanks stay where they are and the game goes on.
     private void checkBulletHits() {
         for (int bulletIndex = bullets.size() - 1; bulletIndex >= 0; bulletIndex--) {
             Bullet currentBullet = bullets.get(bulletIndex);
@@ -599,34 +656,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
             if (bulletBounds.intersects(playerOneTank.getBounds())) {
                 playerOneTank.setLives(playerOneTank.getLives() - 1);
-                startNextRound();
-                return;   // the bullet list was cleared, so we stop checking
-            }
-
-            if (bulletBounds.intersects(playerTwoTank.getBounds())) {
+                bullets.remove(bulletIndex);
+            } else if (bulletBounds.intersects(playerTwoTank.getBounds())) {
                 playerTwoTank.setLives(playerTwoTank.getLives() - 1);
-                startNextRound();
-                return;
+                bullets.remove(bulletIndex);
             }
         }
-    }
-
-    // Puts the tanks back to their starting positions, removes all bullets
-    // and starts a new build phase. The walls stay as they are.
-    private void startNextRound() {
-        bullets.clear();
-
-        playerOneTank.setPositionX(PLAYER_ONE_START_X);
-        playerOneTank.setPositionY(TANKS_START_Y);
-        playerOneTank.setFacingDirection(Direction.RIGHT);
-        playerOneTank.setShootCooldown(0);
-
-        playerTwoTank.setPositionX(PLAYER_TWO_START_X);
-        playerTwoTank.setPositionY(TANKS_START_Y);
-        playerTwoTank.setFacingDirection(Direction.LEFT);
-        playerTwoTank.setShootCooldown(0);
-
-        startBuildPhase(OBJECTS_IN_LATER_BUILD_PHASES);
     }
 
     // The game ends when one of the tanks has no lives left
@@ -693,9 +728,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);   // clears the panel first
 
+        graphics.drawImage(backgroundImage, 0, 0, ARENA_WIDTH, ARENA_HEIGHT, this);
+
         drawWalls(graphics);
-        drawTank(graphics, playerOneTank);
-        drawTank(graphics, playerTwoTank);
+        drawTank(graphics, playerOneTank, playerOneTankImage);
+        drawTank(graphics, playerTwoTank, playerTwoTankImage);
         drawBullets(graphics);
         drawLives(graphics);
 
@@ -720,37 +757,40 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
 
     private void drawWalls(Graphics graphics) {
-        Color brickColor = new Color(139, 69, 19);   // brown
-
         for (WallBlock currentBlock : wallBlocks) {
+            Rectangle blockBounds = currentBlock.getBounds();
+
+            Image imageToDraw;
             if (currentBlock.isIndestructible() == true) {
-                graphics.setColor(Color.DARK_GRAY);
+                imageToDraw = steelWallImage;
             } else {
-                graphics.setColor(brickColor);
+                imageToDraw = brickWallImage;
             }
 
-            Rectangle blockBounds = currentBlock.getBounds();
-            graphics.fillRect(blockBounds.x, blockBounds.y, blockBounds.width, blockBounds.height);
+            // The bounds get smaller when the block is damaged, so the picture shrinks too
+            graphics.drawImage(imageToDraw, blockBounds.x, blockBounds.y,
+                    blockBounds.width, blockBounds.height, this);
         }
     }
 
     private void drawBullets(Graphics graphics) {
-        graphics.setColor(Color.BLACK);
-
         for (Bullet currentBullet : bullets) {
-            graphics.fillOval(currentBullet.getPositionX(), currentBullet.getPositionY(),
-                    currentBullet.getSize(), currentBullet.getSize());
+            graphics.drawImage(bulletImage, currentBullet.getPositionX(), currentBullet.getPositionY(),
+                    currentBullet.getSize(), currentBullet.getSize(), this);
         }
     }
 
     private void drawLives(Graphics graphics) {
-        graphics.setFont(livesFont);
+        drawHearts(graphics, playerOneTank.getLives(), 20, 8);
+        drawHearts(graphics, playerTwoTank.getLives(), 800, 8);
+    }
 
-        graphics.setColor(Color.GREEN);
-        graphics.drawString("Player 1 lives: " + playerOneTank.getLives(), 20, 30);
-
-        graphics.setColor(Color.RED);
-        graphics.drawString("Player 2 lives: " + playerTwoTank.getLives(), 800, 30);
+    // Draws one heart for every life the tank has left
+    private void drawHearts(Graphics graphics, int numberOfLives, int startX, int startY) {
+        for (int heartNumber = 0; heartNumber < numberOfLives; heartNumber++) {
+            int heartX = startX + heartNumber * (HEART_SIZE + SPACE_BETWEEN_HEARTS);
+            graphics.drawImage(heartImage, heartX, startY, HEART_SIZE, HEART_SIZE, this);
+        }
     }
 
     // Draws the shapes that the players are moving and the build phase texts
@@ -798,22 +838,47 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    private void drawTank(Graphics graphics, Tank tank) {
-        // Draw the body
-        graphics.setColor(tank.getBodyColor());
-        graphics.fillRect(tank.getPositionX(), tank.getPositionY(), tank.getSize(), tank.getSize());
+    private void drawTank(Graphics graphics, Tank tank, Image tankImage) {
+        // A copy of the graphics, so the rotation only affects this one tank
+        Graphics2D graphics2D = (Graphics2D) graphics.create();
 
-        // The barrel is a line from the center of the tank in the facing direction
         int centerX = tank.getPositionX() + tank.getSize() / 2;
         int centerY = tank.getPositionY() + tank.getSize() / 2;
 
-        int directionX = getDirectionX(tank.getFacingDirection());
-        int directionY = getDirectionY(tank.getFacingDirection());
+        double angleInDegrees = getRotationAngle(tank.getFacingDirection());
+        graphics2D.rotate(Math.toRadians(angleInDegrees), centerX, centerY);
 
-        int barrelEndX = centerX + directionX * BARREL_LENGTH;
-        int barrelEndY = centerY + directionY * BARREL_LENGTH;
+        graphics2D.drawImage(tankImage, tank.getPositionX(), tank.getPositionY(),
+                tank.getSize(), tank.getSize(), this);
 
-        graphics.setColor(Color.BLACK);
-        graphics.drawLine(centerX, centerY, barrelEndX, barrelEndY);
+        graphics2D.dispose();
+    }
+
+    // The tank picture faces UP, so UP is 0 degrees and the angle grows clockwise
+    private double getRotationAngle(Direction direction) {
+        if (direction == Direction.UP_RIGHT) {
+            return 45;
+        }
+        if (direction == Direction.RIGHT) {
+            return 90;
+        }
+        if (direction == Direction.DOWN_RIGHT) {
+            return 135;
+        }
+        if (direction == Direction.DOWN) {
+            return 180;
+        }
+        if (direction == Direction.DOWN_LEFT) {
+            return 225;
+        }
+        if (direction == Direction.LEFT) {
+            return 270;
+        }
+        if (direction == Direction.UP_LEFT) {
+            return 315;
+        }
+        return 0;   // UP
     }
 }
+
+   
