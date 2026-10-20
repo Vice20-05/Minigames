@@ -114,6 +114,9 @@ public class GameConfig {
     public static final int NEAR_MISS_POPUP_TICKS = 60; // how long "NEAR MISS!" stays on screen (60 = 1 second)
     public static final int NEAR_MISS_MARGIN = 24;      // how many pixels around your car count as "near" (bigger = easier)
 
+    // ---------------- Online leaderboard ----------------
+    public static final int NAME_MAX_LENGTH = 12;       // letters/numbers in the name on the game over screen
+
     // Private constructor: nobody should do "new GameConfig()",
     // this class is only a box of constants.
     private GameConfig() {

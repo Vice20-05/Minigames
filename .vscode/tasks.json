@@ -1,12 +1,21 @@
 {
     // Ctrl+Shift+B = compile with javac and start the F1 game.
     // Works even if the Java extension gets confused, because it doesn't use it.
+    // -cp "out:lib/*" = our classes + every .jar in lib (the PostgreSQL driver for DB_Main).
+    // Windows separates the classpath with ";" instead of ":", so it has its own command.
     "version": "2.0.0",
     "tasks": [
         {
             "label": "Run F1 game (javac)",
             "type": "shell",
-            "command": "javac -d out src/f1_game/f1Main.java src/f1_game/base/*.java && java -cp out f1_game.f1Main",
+            "command": "javac -d out -cp \"lib/*\" src/f1_game/f1Main.java src/f1_game/base/*.java src/Database/*.java && java -cp \"out:lib/*\" f1_game.f1Main",
+            "windows": {
+                "command": "javac -d out -cp \"lib/*\" src/f1_game/f1Main.java src/f1_game/base/*.java src/Database/*.java && java -cp \"out;lib/*\" f1_game.f1Main",
+                "options": {
+                    "cwd": "${workspaceFolder}",
+                    "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+                }
+            },
             "options": {
                 "cwd": "${workspaceFolder}"
             },
