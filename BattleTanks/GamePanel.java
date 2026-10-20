@@ -1,3 +1,4 @@
+
 package minigames;
 
 import java.awt.Color;
@@ -89,7 +90,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         setPreferredSize(new Dimension(ARENA_WIDTH, ARENA_HEIGHT));
         setBackground(Color.WHITE);
         setFocusable(true);
-        setFocusTraversalKeysEnabled(false);   // needed, otherwise Swing takes the Tab key for itself
 
         pressedKeys = new HashSet<Integer>();
         bullets = new ArrayList<Bullet>();
@@ -157,8 +157,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     //Game initialization
 
     private void resetGame() {
-
-        createTanks();
         gameIsOver = false;
         winnerText = "";
 
@@ -170,11 +168,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         rightShiftIsDown = false;
         playerOneShiftWasDown = false;
         playerTwoShiftWasDown = false;
-        playerOnePlaceWasDown = false;
-        playerTwoPlaceWasDown = false;
 
         createTanks();
-        
         createMainWalls();
         createMaze();
 
@@ -215,7 +210,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         gameTimer.start();
     }
 
-    // ---------- Directions ----------
+    //Directions
 
     private int getDirectionX(Direction direction) {
         if (direction == Direction.LEFT
@@ -250,6 +245,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
 
     //Walls 
+
+    private void addWall(int startX, int startY,
+            boolean isHorizontal, boolean isIndestructible) {
 
     private void addWall(int startX, int startY,
             boolean isHorizontal, boolean isIndestructible) {
@@ -349,7 +347,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    //  Build phase 
+    // Build phase 
+
     private void startBuildPhase(int objectsPerPlayer) {
         gameState = GameState.BUILDING;
 
@@ -385,7 +384,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         return WallShape.createVerticalWall();
     }
 
-        private void handleBuildPhase() {
+    private void handleBuildPhase() {
         moveShape(
                 playerOneBuilder,
                 pressedKeys.contains(KeyEvent.VK_W),
@@ -402,20 +401,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 pressedKeys.contains(KeyEvent.VK_RIGHT)
         );
 
-        // Player 1 places with Tab, player 2 places with Enter.
-        // We react only in the frame when the key is pressed down.
-        boolean playerOnePlaceIsDown = pressedKeys.contains(KeyEvent.VK_TAB);
-        boolean playerTwoPlaceIsDown = pressedKeys.contains(KeyEvent.VK_ENTER);
-
         boolean playerOnePressedPlace =
-                playerOnePlaceIsDown && !playerOnePlaceWasDown;
+                leftShiftIsDown && !playerOneShiftWasDown;
 
         boolean playerTwoPressedPlace =
-                playerTwoPlaceIsDown && !playerTwoPlaceWasDown;
-
-        // Remember the keys for the next frame
-        playerOnePlaceWasDown = playerOnePlaceIsDown;
-        playerTwoPlaceWasDown = playerTwoPlaceIsDown;
+                rightShiftIsDown && !playerTwoShiftWasDown;
 
         if (playerOnePressedPlace) {
             tryToPlaceShape(playerOneBuilder);
@@ -828,7 +818,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // Hits and game over 
+    // ---------- Hits and game over ----------
 
     private void checkBulletHits() {
         for (int bulletIndex = bullets.size() - 1;
@@ -1073,7 +1063,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         drawCenteredText(
                 graphics,
-                "Move: W A S D / arrow keys     Place: Tab / Enter",
+                "Move: W A S D / arrow keys     Place: Left Shift / Right Shift",
                 55
         );
 
@@ -1224,3 +1214,4 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
 }
 
+   
