@@ -1,6 +1,5 @@
 package f1_game.base;
 
-import Database.DB_Main;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -56,15 +55,9 @@ public class GamePanel extends JPanel {
     private String popupText = "";   // what is written
     private int nearMissCount;       // how many near misses this run (shown at game over)
 
-    // Online leaderboard: after a crash the player types a name, then it is saved (see DB_Main).
-    //   TYPING -> Enter -> SAVING -> SAVED or FAILED        TYPING -> Esc -> SKIPPED
-    private enum SaveState { TYPING, SAVING, SAVED, FAILED, SKIPPED }
-    private SaveState saveState;
-    private String playerName = "";  // what is typed on the game over screen right now
-    private String lastName = "";    // the name used last time, filled in again (only while the game is open)
-    // true right after a crash: W/A/S/D are probably still held, and holding a key "types" it
-    // again and again (wwwww). So we ignore typing until all driving keys are let go.
-    private boolean waitForKeyRelease;
+    // Game over screen: type a name and save the score online (see ScoreSubmitter).
+    // "final" + made once: it remembers the last name across restarts.
+    private final ScoreSubmitter scoreSubmitter = new ScoreSubmitter();
 
     // The grass next to the road, painted once and then only copied (see BackgroundCache).
     private final BackgroundCache background = new BackgroundCache();
@@ -207,10 +200,12 @@ public class GamePanel extends JPanel {
         String typed = keys.takeTypedKeys();
 
         if (gameOver) {
-            if (saveState == SaveState.TYPING) {
-                updateNameInput(typed); // R is a letter here, so it does NOT restart
-            } else if (keys.isRestartPressed()) {
-                resetGame();
+            if (scoreSubmitter.canRestart()) {
+                if (keys.isRestartPressed()) {
+                    resetGame();
+                }
+            } else {
+                scoreSubmitter.update(typed, keys); // typing the name (R is a letter here)
             }
             return; // when the game is over, nothing moves
         }
@@ -319,71 +314,7 @@ public class GamePanel extends JPanel {
     /** The player crashed: stop the game and ask for a name for the leaderboard. */
     private void onGameOver() {
         gameOver = true;
-        saveState = SaveState.TYPING;
-        playerName = lastName; // already filled in, Enter is enough to save again
-        waitForKeyRelease = true;
-    }
-
-    /** Game over screen, while typing the name. "typed" = the keys typed this frame. */
-    private void updateNameInput(String typed) {
-        if (waitForKeyRelease) {
-            if (!keys.isDrivingKeyPressed()) {
-                waitForKeyRelease = false; // all let go: from the next frame on typing works
-            }
-            return;
-        }
-
-        for (char c : typed.toCharArray()) {
-            if (c == KeyHandler.ENTER) {
-                if (!playerName.isEmpty()) { // empty name + Enter = do nothing
-                    saveScoreOnline();
-                    return;
-                }
-            } else if (c == KeyHandler.ESCAPE) {
-                saveState = SaveState.SKIPPED;
-                return;
-            } else if (c == KeyHandler.BACKSPACE) {
-                if (!playerName.isEmpty()) {
-                    playerName = playerName.substring(0, playerName.length() - 1); // cut the last letter
-                }
-            } else if (playerName.length() < GameConfig.NAME_MAX_LENGTH) {
-                playerName += c; // KeyHandler only lets letters and numbers through
-            }
-        }
-    }
-
-    /**
-     * Sends the score to the online leaderboard on a BACKGROUND THREAD.
-     * Without internet it can take a few seconds before it gives up, and tick() runs
-     * on the Swing thread: waiting there would freeze the whole game.
-     * Same idea as loadImagesInBackground(): doInBackground() = slow work, done() = back on Swing.
-     */
-    private void saveScoreOnline() {
-        saveState = SaveState.SAVING;
-        lastName = playerName;
-        // Copy them now: the background thread must not read the game's variables later
-        String name = playerName;
-        int finalScore = (int) score;
-
-        new SwingWorker<Boolean, Void>() {
-            @Override
-            protected Boolean doInBackground() {
-                return DB_Main.saveScore(DB_Main.F1, name, finalScore);
-            }
-
-            @Override
-            protected void done() {
-                boolean saved;
-                try {
-                    saved = get(); // the true/false from doInBackground
-                } catch (InterruptedException | ExecutionException e) {
-                    saved = false;
-                }
-                if (saveState == SaveState.SAVING) { // the player may have already restarted
-                    saveState = saved ? SaveState.SAVED : SaveState.FAILED;
-                }
-            }
-        }.execute();
+        scoreSubmitter.start(score);
     }
 
     /** Points for driving: POINTS_PER_SECOND every second, times the multiplier. */
@@ -541,34 +472,7 @@ public class GamePanel extends JPanel {
         g.setFont(new Font("Arial", Font.PLAIN, 22));
         drawCentered(g, "Score: " + (int) getScore(), GameConfig.WINDOW_HEIGHT / 2 + 10);
         drawCentered(g, "Near misses: " + nearMissCount, GameConfig.WINDOW_HEIGHT / 2 + 45);
-        drawSaveScore(g, GameConfig.WINDOW_HEIGHT / 2 + 95);
-    }
-
-    /** The name input / saving status under the score. y = the first line. */
-    private void drawSaveScore(Graphics2D g, int y) {
-        g.setFont(new Font("Arial", Font.PLAIN, 22));
-        if (saveState == SaveState.TYPING) {
-            g.setColor(Color.WHITE);
-            drawCentered(g, "Enter your name: " + playerName + "_", y);
-            g.setFont(new Font("Arial", Font.PLAIN, 16));
-            drawCentered(g, "[Enter] save    [Esc] skip", y + 35);
-            return; // no "Press R" while typing, R is a letter now
-        }
-
-        if (saveState == SaveState.SAVING) {
-            g.setColor(Color.LIGHT_GRAY);
-            drawCentered(g, "Saving...", y);
-        } else if (saveState == SaveState.SAVED) {
-            g.setColor(Color.GREEN);
-            drawCentered(g, "Saved!", y);
-        } else if (saveState == SaveState.FAILED) {
-            g.setColor(Color.ORANGE);
-            drawCentered(g, "Couldn't save (no internet?)", y);
-        }
-        // SKIPPED: no status text
-
-        g.setColor(Color.WHITE);
-        drawCentered(g, "Press R to restart", y + 35);
+        scoreSubmitter.draw(g, GameConfig.WINDOW_HEIGHT / 2 + 95); // name input + "Press R"
     }
 
     /** Draws text in the horizontal middle of the window. */

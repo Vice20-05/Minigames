@@ -93,7 +93,8 @@ Use a SwingWorker like in the examples below.
     }.execute();
 
 (The F1 game already does this itself on its game over screen, in
-GamePanel.saveScoreOnline().)
+src/f1_game/base/ScoreSubmitter.java, saveInBackground(). You can
+copy that class for the tank game: only DB_Main.F1 changes to TANK.)
 
 
 ---------------------------------------------------------------------
