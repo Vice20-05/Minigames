@@ -1,0 +1,32 @@
+MINI GAMES - F1 Racing and Battle Tanks
+=======================================
+
+Java is included, you don't need to install anything.
+Keep the files in this folder together.
+
+WINDOWS
+    Double-click  Minigames.bat
+    (If Windows shows "Windows protected your PC": More info -> Run anyway.)
+
+LINUX
+    Double-click  Minigames.sh  (or run  ./Minigames.sh  in a terminal)
+
+MAC
+    Double-click  Minigames.app
+    The first time, macOS says it can't check the app (it isn't from the App Store):
+      - click Done / OK
+      - open System Settings -> Privacy & Security, scroll down, click "Open Anyway"
+    Or in the Terminal, once:   xattr -dr com.apple.quarantine Minigames.app
+    (Move Minigames.app out of the Downloads folder first, e.g. to Applications.)
+
+MUSIC
+    The volume slider and the Mute button are on the main menu.
+    They count for the menu and both games, and are remembered.
+
+SCORES
+    Online, scores go to the global leaderboard by themselves.
+    Without internet they are saved on this computer, in the ".minigames" folder
+    in your home folder (with your music setting).
+
+Music credits: resources/music/CREDITS.txt in the game's source code
+(all songs are CC0 / public domain, from OpenGameArt.org).

@@ -3,6 +3,7 @@ out/
 bin/
 build/
 target/
+dist/
 *.class
 *.jar
 !lib/*.jar

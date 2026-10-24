@@ -1,7 +1,9 @@
 package common;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -14,13 +16,18 @@ import java.util.Properties;
 
 /**
  * DB_Main = the leaderboards. ONLINE they are in Supabase (a PostgreSQL database on the
- * internet), OFFLINE in a local SQLite file (scores.db in the project folder).
+ * internet), OFFLINE in a local SQLite file (scores.db in the ".minigames" folder in the
+ * user's home folder, see Resources.dataFolder()).
  *
  * It works the same way for both, only the URL is different:
  *   1) open a Connection   2) run SQL with a PreparedStatement   3) close it
  *
  * The Supabase login data (url, user, password) is NOT in the code, it is read from
- * config.properties in the project root (see config.example.properties).
+ * config.properties (see config.example.properties):
+ *   - from the project folder, when the game runs from VS Code / the terminal
+ *   - from inside Minigames.jar, where build.sh puts a copy, so players don't need the file.
+ *     That copy must be the LIMITED game user (docs/supabase_game_user.sql), never the
+ *     admin password, because anyone can unzip a jar and read it.
  *
  * ONLINE OR OFFLINE?
  *   checkConnection() tries Supabase (the menu calls it at startup and every time the menu
@@ -39,7 +46,6 @@ public class DB_Main {
     public static final String TANK = "tank_scores";
 
     private static final String CONFIG_FILE = "config.properties";
-    private static final String LOCAL_DB_URL = "jdbc:sqlite:scores.db"; // file in the project folder
     private static final int TOP_COUNT = 10;
     private static final String TIMEOUT_SECONDS = "5";       // give up after 5 s without internet
     private static final String CHECK_TIMEOUT_SECONDS = "3"; // the online check gives up sooner
@@ -198,10 +204,7 @@ public class DB_Main {
 
     /** Opens a Supabase connection with the data from config.properties. */
     private static Connection connect(String timeoutSeconds) throws IOException, SQLException {
-        Properties config = new Properties();
-        try (FileInputStream file = new FileInputStream(CONFIG_FILE)) {
-            config.load(file);
-        }
+        Properties config = loadConfig();
 
         Properties login = new Properties();
         login.setProperty("user", config.getProperty("db.user", ""));
@@ -213,11 +216,30 @@ public class DB_Main {
     }
 
     /**
+     * Reads config.properties: the one in the project folder if there is one,
+     * otherwise the copy inside Minigames.jar.
+     */
+    private static Properties loadConfig() throws IOException {
+        Properties config = new Properties();
+        File file = new File(CONFIG_FILE);
+        try (InputStream stream = file.isFile()
+                ? new FileInputStream(file)
+                : DB_Main.class.getResourceAsStream("/" + CONFIG_FILE)) {
+            if (stream == null) {
+                throw new IOException(CONFIG_FILE + " not found (not in the project folder, not in the jar)");
+            }
+            config.load(stream);
+        }
+        return config;
+    }
+
+    /**
      * Opens scores.db (SQLite makes the file the first time) and makes sure both
      * tables exist, with the same columns as in Supabase.
      */
     private static Connection connectLocal() throws SQLException {
-        Connection conn = DriverManager.getConnection(LOCAL_DB_URL);
+        File scoresFile = new File(Resources.dataFolder(), "scores.db");
+        Connection conn = DriverManager.getConnection("jdbc:sqlite:" + scoresFile.getAbsolutePath());
         try (Statement stmt = conn.createStatement()) {
             for (String table : new String[] { F1, TANK }) {
                 stmt.execute("CREATE TABLE IF NOT EXISTS " + table + " ("
