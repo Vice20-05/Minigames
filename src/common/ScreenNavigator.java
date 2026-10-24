@@ -12,4 +12,7 @@ public interface ScreenNavigator {
     void showTankBattle();
 
     void showScores();
+
+    // Closes the whole program.
+    void quit();
 }

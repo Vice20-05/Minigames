@@ -13,7 +13,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-// The main menu: title and three buttons.
+// The main menu: title and four buttons.
 public class TitleScreenPanel extends JPanel {
 
     private static final Font TITLE_FONT = new Font("Impact", Font.PLAIN, 70);
@@ -43,9 +43,9 @@ public class TitleScreenPanel extends JPanel {
     }
 
     private void createButtons() {
-        JPanel buttonPanel = new JPanel(new GridLayout(3, 1, 0, 20));
+        JPanel buttonPanel = new JPanel(new GridLayout(4, 1, 0, 20));
         buttonPanel.setOpaque(false);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(80, 330, 140, 330));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(60, 330, 80, 330));
 
         JButton f1GameButton = createButton("F1 Game");
         f1GameButton.addActionListener(new ActionListener() {
@@ -71,9 +71,18 @@ public class TitleScreenPanel extends JPanel {
             }
         });
 
+        JButton quitButton = createButton("Quit");
+        quitButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                screenNavigator.quit();
+            }
+        });
+
         buttonPanel.add(f1GameButton);
         buttonPanel.add(tankBattleButton);
         buttonPanel.add(scoresButton);
+        buttonPanel.add(quitButton);
 
         add(buttonPanel, BorderLayout.CENTER);
     }

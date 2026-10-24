@@ -87,6 +87,11 @@ public class MainWindow extends JFrame implements ScreenNavigator {
         showPanel(new ScoresPanel(this));
     }
 
+    @Override
+    public void quit() {
+        System.exit(0); // closes every window and stops the program
+    }
+
     // Hides the menu while the game is open, and brings it back when the game window closes.
     private void openGame(JFrame window) {
         gameWindow = window;
