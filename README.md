@@ -4,8 +4,6 @@ A Java Swing game collection with two game modes, **F1 Racing** and **Tank Battl
 
 Built as a university Java project.
 
-> 🧪 **Team, while we test:** see [`TESTING_AND_MUSIC.txt`](TESTING_AND_MUSIC.txt) for how to run the game, what to test, and how to change the music without touching the code.
-
 ---
 
 ## 📸 Screenshots
@@ -86,7 +84,7 @@ A local 2-player tank fight on a destructible battlefield.
 - Each screen has its own song: the menu, F1 Racing and Battle Tanks
 - The **Music** volume slider and the **Mute** button are on the main menu and count for all three
 - The setting is remembered (`settings.properties` in the `.minigames` folder)
-- All songs are CC0 (public domain) from OpenGameArt, see `resources/music/CREDITS.txt
+- The songs are WAV files in `resources/sounds`: `monkeys.wav` (menu), `mario.wav` (F1 Racing), `bowser.wav` (Battle Tanks)
 
 ---
 
@@ -102,7 +100,8 @@ Minigames/
 │   ├── textures/
 │   │   ├── f1/          # F1 images
 │   │   └── battletanks/ # Tank Battle images
-│   └── music/           # Menu, F1 and Tank songs (WAV) + CREDITS.txt
+│   ├── sounds/          # Menu, F1 and Tank songs (WAV)
+│   └── music/           # earlier CC0 songs + CREDITS.txt (not played anymore)
 ├── lib/                 # PostgreSQL + SQLite JDBC drivers
 ├── docs/
 │   ├── screenshots/     # Images used in this README
