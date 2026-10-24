@@ -27,7 +27,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
  * the same the next time the game starts.
  *
  * Java can play .wav files without any extra library, so the songs are WAVs in
- * resources/music (credits: resources/music/CREDITS.txt).
+ * resources/sounds (the team's songs).
  *
  * Loading a song and opening the sound card can take a moment, so that happens on
  * its OWN background thread: the menu never freezes. No sound card? Then there is
@@ -35,9 +35,9 @@ import javax.sound.sampled.UnsupportedAudioFileException;
  */
 public class MusicPlayer {
 
-    public static final String MENU = "resources/music/menu.wav";
-    public static final String F1 = "resources/music/f1.wav";
-    public static final String TANK = "resources/music/tank.wav";
+    public static final String MENU = "resources/sounds/monkeys.wav";
+    public static final String F1 = "resources/sounds/mario.wav";
+    public static final String TANK = "resources/sounds/bowser.wav";
 
     private static final String SETTINGS_FILE = "settings.properties";
     private static final int DEFAULT_VOLUME = 50;
