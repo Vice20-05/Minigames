@@ -1,6 +1,6 @@
-package f1_game.base;
+package f1;
 
-import Database.DB_Main;
+import common.DB_Main;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;

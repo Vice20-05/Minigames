@@ -1,6 +1,5 @@
-package f1_game;
+package f1;
 
-import f1_game.base.GameWindow;
 import javax.swing.SwingUtilities;
 
 public class f1Main {

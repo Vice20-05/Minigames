@@ -9,9 +9,9 @@
         {
             "label": "Run F1 game (javac)",
             "type": "shell",
-            "command": "javac -d out -cp \"lib/*\" src/f1_game/f1Main.java src/f1_game/base/*.java src/Database/*.java && java -cp \"out:lib/*\" f1_game.f1Main",
+            "command": "javac -d out -cp \"lib/*\" src/common/*.java src/f1/*.java src/battletanks/*.java && java -cp \"out:lib/*\" f1.f1Main",
             "windows": {
-                "command": "javac -d out -cp \"lib/*\" src/f1_game/f1Main.java src/f1_game/base/*.java src/Database/*.java && java -cp \"out;lib/*\" f1_game.f1Main",
+                "command": "javac -d out -cp \"lib/*\" src/common/*.java src/f1/*.java src/battletanks/*.java && java -cp \"out;lib/*\" f1.f1Main",
                 "options": {
                     "cwd": "${workspaceFolder}",
                     "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }

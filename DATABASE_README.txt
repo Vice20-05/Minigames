@@ -6,7 +6,7 @@ The leaderboards are in Supabase (a PostgreSQL database on the
 internet). We talk to it with plain JDBC, exactly like with SQLite,
 only the URL is different. Everything is in:
 
-    src/Database/DB_Main.java      (package Database)
+    src/common/DB_Main.java        (package common)
 
 Tables (already made in Supabase):
     f1_scores   (id, username UNIQUE, score INT)
@@ -24,8 +24,8 @@ a) The driver: lib/postgresql-42.7.14.jar is already in the repo.
    - IntelliJ: File -> Project Structure -> Libraries -> + -> Java
      -> pick lib/postgresql-42.7.14.jar.
    - Terminal (Linux/Mac, on Windows use ; instead of :):
-       javac -d out -cp "lib/*" src/f1_game/f1Main.java src/f1_game/base/*.java src/Database/*.java
-       java -cp "out:lib/*" f1_game.f1Main
+       javac -d out -cp "lib/*" src/common/*.java src/f1/*.java src/battletanks/*.java
+       java -cp "out:lib/*" common.Main
 
 b) The password file:
    - Copy  config.example.properties  and name the copy
@@ -39,7 +39,7 @@ b) The password file:
 
    The game must be started FROM the project folder (the one with
    src and config.properties), otherwise the file isn't found.
-   (Same rule as the pictures in Resorces.)
+   (Same rule as the pictures in resources.)
 
 
 ---------------------------------------------------------------------
@@ -66,7 +66,7 @@ Use a SwingWorker like in the examples below.
 ---------------------------------------------------------------------
 3. EXAMPLE: SAVE A TANK SCORE (at the end of a tank game)
 ---------------------------------------------------------------------
-    import Database.DB_Main;
+    import common.DB_Main;
     import javax.swing.SwingWorker;
 
     String name = "Belle";   // copy the values into final variables first
@@ -93,14 +93,14 @@ Use a SwingWorker like in the examples below.
     }.execute();
 
 (The F1 game already does this itself on its game over screen, in
-src/f1_game/base/ScoreSubmitter.java, saveInBackground(). You can
+src/f1/ScoreSubmitter.java, saveInBackground(). You can
 copy that class for the tank game: only DB_Main.F1 changes to TANK.)
 
 
 ---------------------------------------------------------------------
 4. EXAMPLE: TOP 10 IN A JTABLE (score screen)
 ---------------------------------------------------------------------
-    import Database.DB_Main;
+    import common.DB_Main;
     import java.util.List;
     import javax.swing.*;
     import javax.swing.table.DefaultTableModel;

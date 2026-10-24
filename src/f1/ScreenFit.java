@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 /**
  * ScreenFit = how the WINDOW_WIDTH x WINDOW_HEIGHT game fits into a panel of any size (fullscreen).

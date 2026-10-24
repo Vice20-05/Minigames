@@ -1,5 +1,5 @@
 {
-    // The Java code lives in "src" (packages f1_game.*). Saying it here makes VS Code
+    // The Java code lives in "src" (packages common, f1, battletanks). Saying it here makes VS Code
     // re-scan the project when this file changes, so new .java files are found.
     "java.project.sourcePaths": ["src"],
     // Every .jar in lib (the PostgreSQL driver), so the Run button finds it too

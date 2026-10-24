@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -33,7 +33,7 @@ public abstract class GameObject {
     protected BufferedImage image; // stays null until there is art
 
     /**
-     * @param imagePath path to a picture, for example "Resorces/Textures/player.png".
+     * @param imagePath path to a picture, for example "resources/textures/f1/player.png".
      *                  Pass null to just use a colored box (placeholder).
      */
     public GameObject(double x, double y, int width, int height, Color color, String imagePath) {

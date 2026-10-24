@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
@@ -15,11 +15,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 
 /**
- * ImageLoader = loads pictures for the game from the Resorces folder.
+ * ImageLoader = loads pictures for the game from the resources folder.
  *
- * A path like "Resorces/Textures/player.png" is looked up from the folder
+ * A path like "resources/textures/f1/player.png" is looked up from the folder
  * the program was STARTED in. If you start it from "src" (or another folder
- * inside the project), that folder has no "Resorces" in it and the picture
+ * inside the project), that folder has no "resources" in it and the picture
  * is not found. So we also look in the parent folders until we find it.
  */
 public class ImageLoader {
@@ -65,7 +65,7 @@ public class ImageLoader {
     }
 
     /**
-     * Loads EVERY .png inside a folder, for example "Resorces/Textures/traffic".
+     * Loads EVERY .png inside a folder, for example "resources/textures/f1/traffic".
      * Want a new traffic car? Just drop another .png into that folder, no code change needed.
      * Returns an empty list if the folder can't be found (then we use colored boxes).
      */

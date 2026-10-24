@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -27,9 +27,9 @@ public class Road {
 
     private  double roadImageOffset=0;
 
-    public static final String BACKGROUND_PATH = "Resorces/Textures/f1game_grass_background/background.png";
+    public static final String BACKGROUND_PATH = "resources/textures/f1/f1game_grass_background/background.png";
     // road.png doesn't exist yet -> a gray road is drawn until you add it
-    public static final String ROAD_PATH = "Resorces/Textures/f1game_grass_background/road.png";
+    public static final String ROAD_PATH = "resources/textures/f1/f1game_grass_background/road.png";
 
     public Road(){
         backgroundImage=ImageLoader.load(BACKGROUND_PATH);

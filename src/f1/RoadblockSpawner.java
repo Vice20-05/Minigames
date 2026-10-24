@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 import java.awt.image.BufferedImage;
 import java.util.List;
@@ -16,9 +16,9 @@ import java.util.Random;
  */
 public class RoadblockSpawner {
 
-    public static final String ROADBLOCK_PATH = "Resorces/Textures/Roadblock/tribune_overhang_striped.png";
+    public static final String ROADBLOCK_PATH = "resources/textures/f1/Roadblock/tribune_overhang_striped.png";
     // Put the pothole picture here with exactly this name. Until then a dark hole is drawn.
-    public static final String POTHOLE_PATH = "Resorces/Textures/Roadblock/pothole.png";
+    public static final String POTHOLE_PATH = "resources/textures/f1/Roadblock/pothole.png";
 
     // Loaded once by GamePanel on the background thread, here they come from memory.
     private final BufferedImage roadblockImage = ImageLoader.load(ROADBLOCK_PATH);

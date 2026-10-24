@@ -4,6 +4,7 @@ out/
 
 # Personal guide, keep it local
 src/f1_game/base/Victor.txt
+src/f1/Victor.txt
 
 # Database password (copy config.example.properties to make your own)
 config.properties

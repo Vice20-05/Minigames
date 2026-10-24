@@ -1,4 +1,4 @@
-package Database;
+package common;
 
 import java.io.FileInputStream;
 import java.io.IOException;

@@ -5,7 +5,7 @@
             "type": "java",
             "name": "Launch F1 game",
             "request": "launch",
-            "mainClass": "f1_game.f1Main",
+            "mainClass": "f1.f1Main",
             "cwd": "${workspaceFolder}"
         },
         {

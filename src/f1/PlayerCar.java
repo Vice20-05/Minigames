@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 import java.awt.Color;
 import java.awt.Rectangle;
@@ -21,7 +21,7 @@ public class PlayerCar extends GameObject {
     // Holding A/D changes it a little every frame, so turning starts soft and gets stronger.
     private double steerSpeed;
 
-    public static final String IMAGE_PATH = "Resorces/Textures/f1_game_playerCar/f1.png";
+    public static final String IMAGE_PATH = "resources/textures/f1/f1_game_playerCar/f1.png";
 
     public PlayerCar() {
         // "super(...)" calls the constructor of the parent class (GameObject).

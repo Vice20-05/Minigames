@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 /**
  * GameConfig = one place for ALL the numbers of the game.

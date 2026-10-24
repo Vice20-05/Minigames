@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -25,7 +25,7 @@ public class TrafficSpawner {
         Color.BLUE, Color.YELLOW, Color.ORANGE, Color.CYAN, Color.MAGENTA, Color.LIGHT_GRAY
     };
 
-    public static final String TRAFFIC_FOLDER = "Resorces/Textures/traffic";
+    public static final String TRAFFIC_FOLDER = "resources/textures/f1/traffic";
 
     // All the pictures from the traffic folder. GamePanel loads them ONCE on a background
     // thread when the game opens, so here they come from ImageLoader's memory (instant).

@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -9,8 +9,8 @@ import javax.swing.SwingUtilities;
  * GameWindow = the window (JFrame) that holds the game.
  *
  * It also has a main() method, so you can start JUST the F1 game for testing,
- * without the main menu. Later the main menu (src/Main.java) can open it with:
- *     new f1_game.base.GameWindow();
+ * without the main menu. Later the main menu (src/common/Main.java) can open it with:
+ *     new f1.GameWindow();
  */
 public class GameWindow extends JFrame {
 

@@ -1,4 +1,4 @@
-package f1_game.base;
+package f1;
 
 import java.awt.Color;
 import java.awt.Font;
