@@ -14,7 +14,6 @@ import common.Resources;
 // its getter returns null and the GamePanel draws a simple shape instead.
 public class GameImages {
 
-    // Put your backgrounds in resources/textures/battletanks with these names.
     private static final String[] BACKGROUND_PATHS = {
         "resources/textures/battletanks/bg1.png",
         "resources/textures/battletanks/bg2.png",
@@ -23,7 +22,9 @@ public class GameImages {
         "resources/textures/battletanks/bg5.png"
     };
 
-    // volatile: the loader thread writes them, the Swing thread reads them.
+    // Used when none of the backgrounds above can be loaded.
+    private static final String FALLBACK_BACKGROUND_PATH = "resources/textures/battletanks/bg.png";
+
     private volatile Image currentBackgroundImage;
     private volatile Image playerOneTankImage;
     private volatile Image playerTwoTankImage;
@@ -33,6 +34,7 @@ public class GameImages {
     private volatile Image heartImage;
 
     private volatile Image[] backgroundImages;
+    private volatile Image fallbackBackgroundImage;
 
     private final Random random;
 
@@ -41,8 +43,7 @@ public class GameImages {
         backgroundImages = new Image[BACKGROUND_PATHS.length];
     }
 
-    // Loads the PNG pictures from resources/textures/battletanks.
-    // This is called by the image loader thread.
+    // Loads the pictures from the resources folder.
     public void loadAll() {
         playerOneTankImage = loadImage("resources/textures/battletanks/tank_blue.png");
         playerTwoTankImage = loadImage("resources/textures/battletanks/tank_bigRed.png");
@@ -62,6 +63,7 @@ public class GameImages {
         }
 
         backgroundImages = loadedBackgrounds;
+        fallbackBackgroundImage = loadImage(FALLBACK_BACKGROUND_PATH);
         pickRandomBackground();
     }
 
@@ -77,7 +79,7 @@ public class GameImages {
         }
 
         if (usableBackgrounds.isEmpty()) {
-            currentBackgroundImage = null;
+            currentBackgroundImage = fallbackBackgroundImage; // null if bg.png is missing too
             return;
         }
 
@@ -87,16 +89,14 @@ public class GameImages {
 
     // Returns null when the picture is missing or broken.
     private Image loadImage(String imagePath) {
-        // Resources finds the picture inside Minigames.jar, or in the project folder
-        // when the game is started from there (the same way the F1 game loads its pictures).
-        try (InputStream imageStream = Resources.open(imagePath)) {
-
-            if (imageStream == null) {
+        // Resources finds the picture inside Minigames.jar, or in the project folder.
+        try (InputStream input = Resources.open(imagePath)) {
+            if (input == null) {
                 System.out.println("Image not found: " + imagePath);
                 return null;
             }
 
-            BufferedImage loadedImage = ImageIO.read(imageStream);
+            BufferedImage loadedImage = ImageIO.read(input);
 
             if (loadedImage == null) {
                 System.out.println("Unsupported image format: " + imagePath);
