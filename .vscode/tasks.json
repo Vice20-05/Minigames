@@ -1,5 +1,6 @@
 {
     // Ctrl+Shift+B = compile with javac and start the F1 game.
+    // Terminal -> Run Task... -> "Run Battle Tanks (javac)" starts the tank game.
     // Works even if the Java extension gets confused, because it doesn't use it.
     // -cp "out:lib/*" = our classes + every .jar in lib (the PostgreSQL driver for DB_Main).
     // Windows separates the classpath with ";" instead of ":", so it has its own command.
@@ -23,6 +24,22 @@
                 "kind": "build",
                 "isDefault": true
             },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Battle Tanks (javac)",
+            "type": "shell",
+            "command": "javac -d out src/battletanks/*.java && java -cp out battletanks.Main",
+            "windows": {
+                "options": {
+                    "cwd": "${workspaceFolder}",
+                    "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+                }
+            },
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
             "problemMatcher": []
         }
     ]

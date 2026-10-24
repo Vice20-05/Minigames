@@ -1,5 +1,4 @@
-
-package minigames;
+package battletanks;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -9,24 +8,25 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Rectangle;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Random;
-import javax.swing.ImageIcon;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.Timer;
+import javax.swing.SwingUtilities;
 
 // The arena where everything is drawn.
-public class GamePanel extends JPanel implements ActionListener, KeyListener {
+public class GamePanel extends JPanel implements Updatable, KeyListener {
 
     public static final int ARENA_WIDTH = 1000;
     public static final int ARENA_HEIGHT = 700;
+
+    private static final int FRAME_DELAY_MILLISECONDS = 16;
 
     private static final int BULLET_SPEED = 6;
     private static final int DIAGONAL_BULLET_SPEED = 4;
@@ -48,6 +48,19 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private static final int HEART_SIZE = 24;
     private static final int SPACE_BETWEEN_HEARTS = 5;
 
+    private static final String GAME_NAME = "Tank Battle";
+
+    // The two buttons on the game over screen (they are centered in the arena).
+    private static final int BUTTON_WIDTH = 260;
+    private static final int BUTTON_HEIGHT = 60;
+    private static final int BUTTON_X = (ARENA_WIDTH - BUTTON_WIDTH) / 2;
+    private static final int REPLAY_BUTTON_Y = 400;
+    private static final int TITLE_BUTTON_Y = 480;
+
+    // Both threads (game loop and Swing) use the game data,
+    // so every access to it is done inside synchronized (gameLock).
+    private final Object gameLock = new Object();
+
     private Tank playerOneTank;
     private Tank playerTwoTank;
 
@@ -60,131 +73,282 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private PlayerBuilder playerTwoBuilder;
 
     private Random random;
-    private Timer gameTimer;
+
+    private GameImages gameImages;
+    private FallbackPainter fallbackPainter;
+    private MapBuilder mapBuilder;
+
+    private GameLoopTask gameLoopTask;
+    private Thread gameLoopThread;
 
     private HashSet<Integer> pressedKeys;
 
     private boolean leftShiftIsDown;
     private boolean rightShiftIsDown;
 
-    private boolean playerOneShiftWasDown;
-    private boolean playerTwoShiftWasDown;
+    private boolean playerOnePlaceWasDown;   // was the place key (Tab) down in the previous frame?
+    private boolean playerTwoPlaceWasDown;   // was the place key (Enter) down in the previous frame?
 
     private boolean gameIsOver;
     private String winnerText;
+    private int winnerPlayerNumber;   // 1 or 2, 0 while the game is running
+
+    // Game over steps: 1. ask the names and save  2. show the two buttons
+    private boolean nameStepIsStarted;
+    private boolean nameStepIsFinished;
+
+    private ScreenNavigator screenNavigator;
+    private ScoreRepository scoreRepository;
 
     private Font livesFont;
     private Font gameOverFont;
 
-    private Image backgroundImage;
-    private Image playerOneTankImage;
-    private Image playerTwoTankImage;
-    private Image brickWallImage;
-    private Image steelWallImage;
-    private Image bulletImage;
-    private Image heartImage;
+    public GamePanel(ScreenNavigator screenNavigator,
+            ScoreRepository scoreRepository) {
 
-    public GamePanel() {
+        this.screenNavigator = screenNavigator;
+        this.scoreRepository = scoreRepository;
+
         setPreferredSize(new Dimension(ARENA_WIDTH, ARENA_HEIGHT));
         setBackground(Color.WHITE);
         setFocusable(true);
+        setFocusTraversalKeysEnabled(false);   // needed, otherwise Swing takes the Tab key for itself
 
         pressedKeys = new HashSet<Integer>();
         bullets = new ArrayList<Bullet>();
         wallBlocks = new ArrayList<WallBlock>();
         random = new Random();
 
-        leftShiftIsDown = false;
-        rightShiftIsDown = false;
-        playerOneShiftWasDown = false;
-        playerTwoShiftWasDown = false;
+        gameImages = new GameImages();
+        fallbackPainter = new FallbackPainter();
+        mapBuilder = new MapBuilder();
 
         gameIsOver = false;
         winnerText = "";
+        winnerPlayerNumber = 0;
+        nameStepIsStarted = false;
+        nameStepIsFinished = false;
 
         livesFont = new Font("Consolas", Font.BOLD, 16);
         gameOverFont = new Font("Impact", Font.PLAIN, 70);
 
         addKeyListener(this);
 
-        // Clicking the replay button starts a new game.
+        // Clicking the replay button starts a new game,
+        // clicking the title button goes back to the title screen.
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (gameIsOver
-                        && e.getX() >= 400 && e.getX() <= 600
-                        && e.getY() >= 400 && e.getY() <= 460) {
-                    replayGame();
-                }
+                handleGameOverClick(e.getX(), e.getY());
             }
         });
-
-        loadImages();
 
         playerOneBuilder = new PlayerBuilder();
         playerTwoBuilder = new PlayerBuilder();
 
         resetGame();
-        setUpTimer();
+        startImageLoaderThread();
     }
 
-    // ---------- Pictures ----------
+    // Threads
 
-    // Loads the PNG pictures from src/main/resources/images.
-    private void loadImages() {
-        backgroundImage = loadImage("/images/bg.png");
-        playerOneTankImage = loadImage("/images/tank_blue.png");
-        playerTwoTankImage = loadImage("/images/tank_bigRed.png");
-        brickWallImage = loadImage("/images/barrelGreen_side.png");
-        steelWallImage = loadImage("/images/barrelRust_side.png");
-        bulletImage = loadImage("/images/bulletDark1_outline.png");
-        heartImage = loadImage("/images/explosion2.png");
+    // THREAD 2: loads the pictures while the game already runs.
+    private void startImageLoaderThread() {
+        Thread imageLoaderThread = new Thread(
+                new ImageLoaderTask(gameImages, this),
+                "Image-Loader"
+        );
+
+        imageLoaderThread.setDaemon(true);
+        imageLoaderThread.start();
     }
 
-    private Image loadImage(String imagePath) {
-        java.net.URL imageURL = getClass().getResource(imagePath);
+    // THREAD 1: runs the game loop. Started when the panel is shown...
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        startGameLoopThread();
+    }
 
-        if (imageURL == null) {
-            System.out.println("Image not found: " + imagePath);
-            return null;
+    // ...and stopped when the panel is removed from the window.
+    @Override
+    public void removeNotify() {
+        stopGameLoopThread();
+        super.removeNotify();
+    }
+
+    private void startGameLoopThread() {
+        stopGameLoopThread();
+
+        gameLoopTask = new GameLoopTask(this, FRAME_DELAY_MILLISECONDS);
+        gameLoopThread = new Thread(gameLoopTask, "Game-Loop");
+        gameLoopThread.setDaemon(true);   // does not keep the program alive after the window is closed
+        gameLoopThread.start();
+    }
+
+    private void stopGameLoopThread() {
+        if (gameLoopTask != null) {
+            gameLoopTask.stop();
         }
 
-        return new ImageIcon(imageURL).getImage();
+        gameLoopTask = null;
+        gameLoopThread = null;
     }
 
-    // ---------- Game initialization ----------
+    //Game initialization
 
     private void resetGame() {
-        gameIsOver = false;
-        winnerText = "";
+        synchronized (gameLock) {
+            gameIsOver = false;
+            winnerText = "";
+            winnerPlayerNumber = 0;
+            nameStepIsStarted = false;
+            nameStepIsFinished = false;
 
-        pressedKeys.clear();
-        bullets.clear();
-        wallBlocks.clear();
+            pressedKeys.clear();
+            bullets.clear();
+            wallBlocks.clear();
 
-        leftShiftIsDown = false;
-        rightShiftIsDown = false;
-        playerOneShiftWasDown = false;
-        playerTwoShiftWasDown = false;
+            leftShiftIsDown = false;
+            rightShiftIsDown = false;
+            playerOnePlaceWasDown = false;
+            playerTwoPlaceWasDown = false;
 
-        createTanks();
-        createMainWalls();
-        createMaze();
+            createTanks();
 
-        startBuildPhase(OBJECTS_IN_FIRST_BUILD_PHASE);
+            // Random map (one of 5) and a random background.
+            mapBuilder.buildRandomMap(wallBlocks);
+            gameImages.pickRandomBackground();
+
+            startBuildPhase(OBJECTS_IN_FIRST_BUILD_PHASE);
+        }
 
         repaint();
     }
 
     private void replayGame() {
         resetGame();
+        requestFocusInWindow();
+    }
 
-        if (gameTimer != null) {
-            gameTimer.start();
+    // Game over screen
+
+    // The buttons only work after the names were asked and saved.
+    private void handleGameOverClick(int clickX, int clickY) {
+        boolean buttonsAreVisible;
+
+        synchronized (gameLock) {
+            buttonsAreVisible = gameIsOver && nameStepIsFinished;
         }
 
-        requestFocusInWindow();
+        if (!buttonsAreVisible) {
+            return;
+        }
+
+        boolean clickIsInsideButtonColumn = clickX >= BUTTON_X
+                && clickX <= BUTTON_X + BUTTON_WIDTH;
+
+        boolean clickIsOnReplayButton = clickIsInsideButtonColumn
+                && clickY >= REPLAY_BUTTON_Y
+                && clickY <= REPLAY_BUTTON_Y + BUTTON_HEIGHT;
+
+        boolean clickIsOnTitleButton = clickIsInsideButtonColumn
+                && clickY >= TITLE_BUTTON_Y
+                && clickY <= TITLE_BUTTON_Y + BUTTON_HEIGHT;
+
+        if (clickIsOnReplayButton) {
+            replayGame();
+        } else if (clickIsOnTitleButton) {
+            screenNavigator.showTitleScreen();
+        }
+    }
+
+    // The dialogs must open on the Swing thread, not on the game loop thread.
+    private void requestNameDialog() {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                askForNamesAndSaveResult();
+            }
+        });
+    }
+
+    private void askForNamesAndSaveResult() {
+        String playerOneName = askForPlayerName("Player 1 name:", "Player 1");
+        String playerTwoName = askForPlayerName("Player 2 name:", "Player 2");
+
+        int winnerNumber;
+
+        synchronized (gameLock) {
+            winnerNumber = winnerPlayerNumber;
+        }
+
+        String winnerName;
+        String loserName;
+
+        if (winnerNumber == 1) {
+            winnerName = playerOneName;
+            loserName = playerTwoName;
+        } else {
+            winnerName = playerTwoName;
+            loserName = playerOneName;
+        }
+
+        saveResultToDatabase(winnerName, loserName);
+
+        // Now the two buttons can appear.
+        synchronized (gameLock) {
+            nameStepIsFinished = true;
+        }
+
         repaint();
+        requestFocusInWindow();
+    }
+
+    // Asks one name. Cancel or an empty answer gives the default name.
+    private String askForPlayerName(String question, String defaultName) {
+        String enteredName = JOptionPane.showInputDialog(
+                this,
+                question,
+                winnerText,
+                JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (enteredName == null) {
+            return defaultName;
+        }
+
+        String trimmedName = enteredName.trim();
+
+        if (trimmedName.isEmpty()) {
+            return defaultName;
+        }
+
+        return trimmedName;
+    }
+
+    // If the database fails, the player sees a message and the game still goes on.
+    private void saveResultToDatabase(String winnerName, String loserName) {
+        if (scoreRepository == null) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No database is connected, the result was not saved.",
+                    "Save error",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        try {
+            scoreRepository.saveGameResult(GAME_NAME, winnerName, loserName);
+        } catch (SQLException exception) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Could not save the result:\n" + exception.getMessage(),
+                    "Save error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     private void createTanks() {
@@ -201,11 +365,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 Direction.LEFT,
                 Color.RED
         );
-    }
-
-    private void setUpTimer() {
-        gameTimer = new Timer(16, this);
-        gameTimer.start();
     }
 
     // ---------- Directions ----------
@@ -242,69 +401,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         return 0;
     }
 
-    // ---------- Walls ----------
-
-    private void addWall(int startX, int startY,
-            boolean isHorizontal, boolean isIndestructible) {
-
-        for (int blockNumber = 0; blockNumber < 3; blockNumber++) {
-            int blockX = startX;
-            int blockY = startY;
-
-            if (isHorizontal) {
-                blockX = startX + blockNumber * WallBlock.DEFAULT_SIZE;
-            } else {
-                blockY = startY + blockNumber * WallBlock.DEFAULT_SIZE;
-            }
-
-            wallBlocks.add(
-                    new WallBlock(blockX, blockY, isIndestructible)
-            );
-        }
-    }
-
-    private void addWallLine(int startX, int startY, int blockCount,
-            boolean isHorizontal, boolean isIndestructible) {
-
-        for (int blockNumber = 0; blockNumber < blockCount; blockNumber++) {
-            int blockX = startX;
-            int blockY = startY;
-
-            if (isHorizontal) {
-                blockX = startX + blockNumber * WallBlock.DEFAULT_SIZE;
-            } else {
-                blockY = startY + blockNumber * WallBlock.DEFAULT_SIZE;
-            }
-
-            wallBlocks.add(
-                    new WallBlock(blockX, blockY, isIndestructible)
-            );
-        }
-    }
-
-    private void createMainWalls() {
-        addWall(20, 310, false, true);
-        addWall(960, 310, false, true);
-    }
-
-    // Creates the outer frame and the destructible walls in the maze.
-    private void createMaze() {
-        addWallLine(340, 180, 16, true, true);
-        addWallLine(340, 500, 16, true, true);
-
-        addWallLine(340, 200, 6, false, true);
-        addWallLine(340, 380, 6, false, true);
-
-        addWallLine(640, 200, 6, false, true);
-        addWallLine(640, 380, 6, false, true);
-
-        addWallLine(490, 280, 7, false, false);
-
-        addWallLine(400, 240, 3, false, false);
-        addWallLine(400, 400, 3, false, false);
-        addWallLine(580, 240, 3, false, false);
-        addWallLine(580, 400, 3, false, false);
-    }
+    //Walls 
 
     private boolean tankTouchesAnyWall(Tank tank) {
         Rectangle tankBounds = tank.getBounds();
@@ -342,8 +439,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ---------- Build phase ----------
-
+    //  Build phase 
     private void startBuildPhase(int objectsPerPlayer) {
         gameState = GameState.BUILDING;
 
@@ -396,11 +492,20 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 pressedKeys.contains(KeyEvent.VK_RIGHT)
         );
 
+        // Player 1 places with Tab, player 2 places with Enter.
+        // We react only in the frame when the key is pressed down.
+        boolean playerOnePlaceIsDown = pressedKeys.contains(KeyEvent.VK_TAB);
+        boolean playerTwoPlaceIsDown = pressedKeys.contains(KeyEvent.VK_ENTER);
+
         boolean playerOnePressedPlace =
-                leftShiftIsDown && !playerOneShiftWasDown;
+                playerOnePlaceIsDown && !playerOnePlaceWasDown;
 
         boolean playerTwoPressedPlace =
-                rightShiftIsDown && !playerTwoShiftWasDown;
+                playerTwoPlaceIsDown && !playerTwoPlaceWasDown;
+
+        // Remember the keys for the next frame
+        playerOnePlaceWasDown = playerOnePlaceIsDown;
+        playerTwoPlaceWasDown = playerTwoPlaceIsDown;
 
         if (playerOnePressedPlace) {
             tryToPlaceShape(playerOneBuilder);
@@ -554,28 +659,41 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ---------- Game loop ----------
+    //  Game loop 
 
+    // Called by the game loop thread once per frame.
     @Override
-    public void actionPerformed(ActionEvent event) {
-        if (gameIsOver) {
-            return;
-        }
+    public void update() {
+        boolean mustAskForNames = false;
 
-        if (gameState == GameState.BUILDING) {
-            handleBuildPhase();
-        } else {
-            handleMovement();
-            handleShooting();
-            moveBullets();
-            checkBulletHits();
-            checkForGameOver();
-        }
+        synchronized (gameLock) {
+            if (gameIsOver) {
+                return;
+            }
 
-        playerOneShiftWasDown = leftShiftIsDown;
-        playerTwoShiftWasDown = rightShiftIsDown;
+            if (gameState == GameState.BUILDING) {
+                handleBuildPhase();
+            } else {
+                handleMovement();
+                handleShooting();
+                moveBullets();
+                checkBulletHits();
+                checkForGameOver();
+            }
+
+            // The game just ended: the names must be asked exactly once.
+            if (gameIsOver && !nameStepIsStarted) {
+                nameStepIsStarted = true;
+                mustAskForNames = true;
+            }
+        }
 
         repaint();
+
+        // Called outside the lock, so the dialog cannot block the painting.
+        if (mustAskForNames) {
+            requestNameDialog();
+        }
     }
 
     private void handleMovement() {
@@ -668,7 +786,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ---------- Shooting ----------
+    //  Shooting 
 
     private void handleShooting() {
         tryToShoot(playerOneTank, leftShiftIsDown);
@@ -813,7 +931,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ---------- Hits and game over ----------
+    // Hits and game over 
 
     private void checkBulletHits() {
         for (int bulletIndex = bullets.size() - 1;
@@ -839,32 +957,36 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         if (playerOneIsDead) {
             winnerText = "Player 2 wins!";
+            winnerPlayerNumber = 2;
             gameIsOver = true;
         } else if (playerTwoIsDead) {
             winnerText = "Player 1 wins!";
+            winnerPlayerNumber = 1;
             gameIsOver = true;
         }
 
         if (gameIsOver) {
-            gameTimer.stop();
             pressedKeys.clear();
         }
     }
 
-    // ---------- Keyboard ----------
+    //Keyboard
 
     @Override
     public void keyPressed(KeyEvent event) {
         int pressedKeyCode = event.getKeyCode();
-        pressedKeys.add(pressedKeyCode);
 
-        if (pressedKeyCode == KeyEvent.VK_SHIFT) {
-            if (event.getKeyLocation() == KeyEvent.KEY_LOCATION_LEFT) {
-                leftShiftIsDown = true;
-            }
+        synchronized (gameLock) {
+            pressedKeys.add(pressedKeyCode);
 
-            if (event.getKeyLocation() == KeyEvent.KEY_LOCATION_RIGHT) {
-                rightShiftIsDown = true;
+            if (pressedKeyCode == KeyEvent.VK_SHIFT) {
+                if (event.getKeyLocation() == KeyEvent.KEY_LOCATION_LEFT) {
+                    leftShiftIsDown = true;
+                }
+
+                if (event.getKeyLocation() == KeyEvent.KEY_LOCATION_RIGHT) {
+                    rightShiftIsDown = true;
+                }
             }
         }
     }
@@ -872,15 +994,18 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     @Override
     public void keyReleased(KeyEvent event) {
         int releasedKeyCode = event.getKeyCode();
-        pressedKeys.remove(releasedKeyCode);
 
-        if (releasedKeyCode == KeyEvent.VK_SHIFT) {
-            if (event.getKeyLocation() == KeyEvent.KEY_LOCATION_LEFT) {
-                leftShiftIsDown = false;
-            }
+        synchronized (gameLock) {
+            pressedKeys.remove(releasedKeyCode);
 
-            if (event.getKeyLocation() == KeyEvent.KEY_LOCATION_RIGHT) {
-                rightShiftIsDown = false;
+            if (releasedKeyCode == KeyEvent.VK_SHIFT) {
+                if (event.getKeyLocation() == KeyEvent.KEY_LOCATION_LEFT) {
+                    leftShiftIsDown = false;
+                }
+
+                if (event.getKeyLocation() == KeyEvent.KEY_LOCATION_RIGHT) {
+                    rightShiftIsDown = false;
+                }
             }
         }
     }
@@ -890,13 +1015,39 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         // Required by KeyListener.
     }
 
-    // ---------- Drawing ----------
+    //Drawing
 
     @Override
     protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
 
-        // Background texture.
+        // The game loop thread must not change the lists while we draw them.
+        synchronized (gameLock) {
+            drawBackground(graphics);
+
+            // Draw the arena, tanks, bullets and lives.
+            drawWalls(graphics);
+            drawTank(graphics, playerOneTank,
+                    gameImages.getPlayerOneTankImage(), Color.GREEN);
+            drawTank(graphics, playerTwoTank,
+                    gameImages.getPlayerTwoTankImage(), Color.RED);
+            drawBullets(graphics);
+            drawLives(graphics);
+
+            if (!gameIsOver && gameState == GameState.BUILDING) {
+                drawBuildPhase(graphics);
+            }
+
+            if (gameIsOver) {
+                drawGameOver(graphics);
+            }
+        }
+    }
+
+    // Background texture, or a plain color if no background could be loaded.
+    private void drawBackground(Graphics graphics) {
+        Image backgroundImage = gameImages.getCurrentBackgroundImage();
+
         if (backgroundImage != null) {
             graphics.drawImage(
                     backgroundImage,
@@ -904,21 +1055,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                     ARENA_WIDTH, ARENA_HEIGHT,
                     this
             );
-        }
-
-        // Draw the arena, tanks, bullets and lives.
-        drawWalls(graphics);
-        drawTank(graphics, playerOneTank, playerOneTankImage);
-        drawTank(graphics, playerTwoTank, playerTwoTankImage);
-        drawBullets(graphics);
-        drawLives(graphics);
-
-        if (!gameIsOver && gameState == GameState.BUILDING) {
-            drawBuildPhase(graphics);
-        }
-
-        if (gameIsOver) {
-            drawGameOver(graphics);
+        } else {
+            graphics.setColor(new Color(225, 220, 200));
+            graphics.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT);
         }
     }
 
@@ -932,14 +1071,28 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 ARENA_HEIGHT / 2
         );
 
-        // Replay button.
+        // The buttons appear only after the names were asked and saved.
+        if (!nameStepIsFinished) {
+            return;
+        }
+
         graphics.setFont(new Font("Arial", Font.BOLD, 28));
-        graphics.setColor(Color.GREEN);
-        graphics.fillRect(400, 400, 200, 60);
+
+        drawButton(graphics, "REPLAY", REPLAY_BUTTON_Y, Color.GREEN);
+        drawButton(graphics, "TITLE SCREEN", TITLE_BUTTON_Y, Color.ORANGE);
+    }
+
+    private void drawButton(Graphics graphics,
+            String buttonText, int buttonY, Color buttonColor) {
+
+        graphics.setColor(buttonColor);
+        graphics.fillRect(BUTTON_X, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT);
 
         graphics.setColor(Color.BLACK);
-        graphics.drawRect(400, 400, 200, 60);
-        graphics.drawString("REPLAY", 435, 438);
+        graphics.drawRect(BUTTON_X, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT);
+
+        // The text is centered because the buttons are centered in the arena.
+        drawCenteredText(graphics, buttonText, buttonY + 40);
     }
 
     private void drawCenteredText(Graphics graphics,
@@ -959,9 +1112,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             Image imageToDraw;
 
             if (currentBlock.isIndestructible()) {
-                imageToDraw = steelWallImage;
+                imageToDraw = gameImages.getSteelWallImage();
             } else {
-                imageToDraw = brickWallImage;
+                imageToDraw = gameImages.getBrickWallImage();
             }
 
             if (imageToDraw != null) {
@@ -975,22 +1128,21 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 );
             } else {
                 // Simple fallback if a wall texture is missing.
-                graphics.setColor(
-                        currentBlock.isIndestructible()
-                                ? Color.GRAY : new Color(150, 90, 40)
-                );
-
-                graphics.fillRect(
+                fallbackPainter.drawWall(
+                        graphics,
                         blockBounds.x,
                         blockBounds.y,
                         blockBounds.width,
-                        blockBounds.height
+                        blockBounds.height,
+                        currentBlock.isIndestructible()
                 );
             }
         }
     }
 
     private void drawBullets(Graphics graphics) {
+        Image bulletImage = gameImages.getBulletImage();
+
         for (Bullet currentBullet : bullets) {
             if (bulletImage != null) {
                 graphics.drawImage(
@@ -1002,12 +1154,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                         this
                 );
             } else {
-                graphics.setColor(Color.BLACK);
-
-                graphics.fillOval(
+                fallbackPainter.drawBullet(
+                        graphics,
                         currentBullet.getPositionX(),
                         currentBullet.getPositionY(),
-                        currentBullet.getSize(),
                         currentBullet.getSize()
                 );
             }
@@ -1021,6 +1171,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void drawHearts(Graphics graphics,
             int numberOfLives, int startX, int startY) {
+
+        Image heartImage = gameImages.getHeartImage();
 
         for (int heartNumber = 0;
                 heartNumber < numberOfLives;
@@ -1039,11 +1191,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                         this
                 );
             } else {
-                graphics.setColor(Color.RED);
-                graphics.fillOval(
+                fallbackPainter.drawHeart(
+                        graphics,
                         heartX,
                         startY,
-                        HEART_SIZE,
                         HEART_SIZE
                 );
             }
@@ -1058,7 +1209,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         drawCenteredText(
                 graphics,
-                "Move: W A S D / arrow keys     Place: Left Shift / Right Shift",
+                "Move: W A S D / arrow keys     Place: Tab / Enter",
                 55
         );
 
@@ -1076,7 +1227,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 800, 55
         );
 
-        drawShape(graphics, playerOneBuilder, Color.GREEN);
+        drawShape(graphics, playerOneBuilder, Color.BLUE);
         drawShape(graphics, playerTwoBuilder, Color.RED);
     }
 
@@ -1135,7 +1286,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     }
 
     private void drawTank(Graphics graphics,
-            Tank tank, Image tankImage) {
+            Tank tank, Image tankImage, Color fallbackColor) {
 
         Graphics2D graphics2D = (Graphics2D) graphics.create();
 
@@ -1162,14 +1313,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                     this
             );
         } else {
-            graphics2D.setColor(tank.getPositionX() < ARENA_WIDTH / 2
-                    ? Color.GREEN : Color.RED);
-
-            graphics2D.fillRect(
+            // The picture is missing, so the tank is drawn with Swing shapes.
+            fallbackPainter.drawTank(
+                    graphics2D,
                     tank.getPositionX(),
                     tank.getPositionY(),
                     tank.getSize(),
-                    tank.getSize()
+                    fallbackColor
             );
         }
 
@@ -1208,5 +1358,3 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         return 0;
     }
 }
-
-   

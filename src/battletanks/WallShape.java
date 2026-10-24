@@ -1,4 +1,4 @@
-package minigames;
+package battletanks;
 
 // A predefined object that the players can place, made of wall blocks
 public class WallShape {

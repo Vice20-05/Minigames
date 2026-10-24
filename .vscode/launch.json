@@ -7,6 +7,13 @@
             "request": "launch",
             "mainClass": "f1_game.f1Main",
             "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "java",
+            "name": "Launch Battle Tanks",
+            "request": "launch",
+            "mainClass": "battletanks.Main",
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

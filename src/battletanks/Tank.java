@@ -1,4 +1,4 @@
-package minigames;
+package battletanks;
 
 import java.awt.Color;
 import java.awt.Rectangle;

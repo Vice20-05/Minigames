@@ -1,4 +1,4 @@
-package minigames;
+package battletanks;
 
 // The two parts of a round
 public enum GameState {

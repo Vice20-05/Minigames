@@ -1,4 +1,4 @@
-package minigames;
+package battletanks;
 
 // The eight directions a tank can face
 public enum Direction {
