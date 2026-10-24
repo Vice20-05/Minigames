@@ -24,11 +24,11 @@ thread, so nothing freezes). The menu shows "Online" or "Offline".
 
     Online:  scores are saved to / loaded from Supabase.
     Offline: scores are saved to / loaded from scores.db, a SQLite
-             file in the project folder (made automatically). The
-             Scores screen then says "Offline".
+             file in the ".minigames" folder in the user's home folder
+             (made automatically). The Scores screen then says "Offline".
 
 Offline scores stay in scores.db, they are NOT copied to Supabase
-later. scores.db is in .gitignore (every computer has its own).
+later. Every computer has its own scores.db.
 The SQLite driver is lib/sqlite-jdbc-3.47.1.0.jar.
 
 
@@ -58,7 +58,12 @@ b) The password file:
 
    The game must be started FROM the project folder (the one with
    src and config.properties), otherwise the file isn't found.
-   (Same rule as the pictures in resources.)
+
+c) The built game (build.sh): a copy of config.properties goes INSIDE
+   Minigames.jar, so players connect without doing anything. Anyone
+   can unzip a jar and read it, so for builds you share, use the
+   LIMITED game user from docs/supabase_game_user.sql (it can only
+   read and save scores), never the postgres admin password.
 
 
 ---------------------------------------------------------------------
@@ -169,9 +174,9 @@ To refresh: model.setRowCount(0); then run the SwingWorker again.
 ---------------------------------------------------------------------
 5. PROBLEMS
 ---------------------------------------------------------------------
-"config.properties (No such file or directory)"
+"config.properties not found (not in the project folder, not in the jar)"
     -> The file is missing, or the game wasn't started from the
-       project folder.
+       project folder (or the jar was built without it).
 "No suitable driver found"
     -> The .jar isn't on the classpath (see 1a), or db.url doesn't
        start with  jdbc:postgresql://

@@ -3,10 +3,12 @@ package battletanks;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Random;
 import javax.imageio.ImageIO;
+
+import common.Resources;
 
 // Loads and stores all the pictures. If a picture cannot be loaded
 // its getter returns null and the GamePanel draws a simple shape instead.
@@ -85,17 +87,16 @@ public class GameImages {
 
     // Returns null when the picture is missing or broken.
     private Image loadImage(String imagePath) {
-        try {
-            // The path is looked up from the folder the program was STARTED in
-            // (the project folder), the same way the F1 game loads its pictures.
-            File imageFile = new File(imagePath);
+        // Resources finds the picture inside Minigames.jar, or in the project folder
+        // when the game is started from there (the same way the F1 game loads its pictures).
+        try (InputStream imageStream = Resources.open(imagePath)) {
 
-            if (!imageFile.isFile()) {
+            if (imageStream == null) {
                 System.out.println("Image not found: " + imagePath);
                 return null;
             }
 
-            BufferedImage loadedImage = ImageIO.read(imageFile);
+            BufferedImage loadedImage = ImageIO.read(imageStream);
 
             if (loadedImage == null) {
                 System.out.println("Unsupported image format: " + imagePath);
@@ -104,10 +105,6 @@ public class GameImages {
             return loadedImage;
         } catch (IOException exception) {
             System.out.println("Could not read image " + imagePath
-                    + ": " + exception.getMessage());
-            return null;
-        } catch (IllegalArgumentException exception) {
-            System.out.println("Bad image path " + imagePath
                     + ": " + exception.getMessage());
             return null;
         }

@@ -53,6 +53,7 @@ public class MainWindow extends JFrame implements ScreenNavigator {
             gameWindow = null;          // first, so the close listener below does nothing twice
             closingWindow.dispose();    // stops the game loop (F1: windowClosed, tanks: removeNotify)
         }
+        MusicPlayer.play(MusicPlayer.MENU); // keeps playing if it already is (Scores -> menu)
         TitleScreenPanel titleScreen = new TitleScreenPanel(this);
         showPanel(titleScreen);
         if (!isVisible()) {
@@ -88,12 +89,14 @@ public class MainWindow extends JFrame implements ScreenNavigator {
 
     @Override
     public void showF1Game() {
+        MusicPlayer.play(MusicPlayer.F1);
         // GameWindow opens itself and starts the game loop (see f1.GameWindow).
         openGame(new f1.GameWindow());
     }
 
     @Override
     public void showTankBattle() {
+        MusicPlayer.play(MusicPlayer.TANK);
         JFrame tankWindow = new JFrame("Battle Tanks");
         tankWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         tankWindow.setResizable(false);

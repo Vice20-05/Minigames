@@ -3,6 +3,7 @@ package common;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -11,9 +12,12 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JSlider;
 import javax.swing.SwingConstants;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
-// The main menu: title and four buttons.
+// The main menu: title, four buttons, the music settings and the connection status.
 public class TitleScreenPanel extends JPanel {
 
     private static final Font TITLE_FONT = new Font("Impact", Font.PLAIN, 70);
@@ -36,16 +40,74 @@ public class TitleScreenPanel extends JPanel {
 
         createTitleLabel();
         createButtons();
-        createConnectionLabel();
+        createBottomPanel();
     }
 
-    private void createConnectionLabel() {
+    // Bottom of the menu: the music settings, and under them the connection status.
+    private void createBottomPanel() {
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.setOpaque(false);
+
+        bottomPanel.add(createMusicPanel(), BorderLayout.NORTH);
+        bottomPanel.add(createConnectionLabel(), BorderLayout.SOUTH);
+
+        add(bottomPanel, BorderLayout.SOUTH);
+    }
+
+    // "Music" + volume slider + mute button. The setting counts for the menu AND both games.
+    private JPanel createMusicPanel() {
+        JPanel musicPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        musicPanel.setOpaque(false);
+        musicPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
+
+        JLabel musicLabel = new JLabel("Music");
+        musicLabel.setFont(STATUS_FONT);
+        musicLabel.setForeground(Color.WHITE);
+
+        JSlider volumeSlider = new JSlider(0, 100, MusicPlayer.getVolume());
+        volumeSlider.setOpaque(false);
+        volumeSlider.setFocusable(false);
+        volumeSlider.setPreferredSize(new Dimension(250, 30));
+        volumeSlider.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent event) {
+                MusicPlayer.setVolume(volumeSlider.getValue());
+                if (!volumeSlider.getValueIsAdjusting()) { // the mouse was let go: save it
+                    MusicPlayer.saveSettings();
+                }
+            }
+        });
+
+        JButton muteButton = new JButton(muteButtonText());
+        muteButton.setFont(STATUS_FONT);
+        muteButton.setFocusable(false);
+        muteButton.setPreferredSize(new Dimension(110, 30));
+        muteButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                MusicPlayer.setMuted(!MusicPlayer.isMuted());
+                MusicPlayer.saveSettings();
+                muteButton.setText(muteButtonText());
+            }
+        });
+
+        musicPanel.add(musicLabel);
+        musicPanel.add(volumeSlider);
+        musicPanel.add(muteButton);
+        return musicPanel;
+    }
+
+    // The button says what clicking it WILL do
+    private String muteButtonText() {
+        return MusicPlayer.isMuted() ? "Unmute" : "Mute";
+    }
+
+    private JLabel createConnectionLabel() {
         connectionLabel = new JLabel("Checking connection...", SwingConstants.CENTER);
         connectionLabel.setFont(STATUS_FONT);
         connectionLabel.setForeground(Color.LIGHT_GRAY);
         connectionLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 25, 0));
-
-        add(connectionLabel, BorderLayout.SOUTH);
+        return connectionLabel;
     }
 
     // true = online, false = offline
@@ -71,7 +133,7 @@ public class TitleScreenPanel extends JPanel {
     private void createButtons() {
         JPanel buttonPanel = new JPanel(new GridLayout(4, 1, 0, 20));
         buttonPanel.setOpaque(false);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(50, 330, 40, 330));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(40, 330, 30, 330));
 
         JButton f1GameButton = createButton("F1 Game");
         f1GameButton.addActionListener(new ActionListener() {

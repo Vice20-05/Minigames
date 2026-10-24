@@ -1,13 +1,13 @@
 package f1;
 
+import common.Resources;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.Transparency;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,10 +17,9 @@ import javax.imageio.ImageIO;
 /**
  * ImageLoader = loads pictures for the game from the resources folder.
  *
- * A path like "resources/textures/f1/player.png" is looked up from the folder
- * the program was STARTED in. If you start it from "src" (or another folder
- * inside the project), that folder has no "resources" in it and the picture
- * is not found. So we also look in the parent folders until we find it.
+ * A path like "resources/textures/f1/player.png" is found by common.Resources:
+ * inside Minigames.jar, or in the project folder (and its parent folders, so
+ * starting the game from "src" works too).
  */
 public class ImageLoader {
 
@@ -44,24 +43,13 @@ public class ImageLoader {
         return imageCache.computeIfAbsent(imagePath, path -> Optional.ofNullable(readImage(path))).orElse(null);
     }
 
-    /** Actually reads the picture from the disk. */
+    /** Actually reads the picture (from the jar or the project folder, see common.Resources). */
     private static BufferedImage readImage(String imagePath) {
-        // Start in the current folder and go up one folder at a time.
-        File folder = new File("").getAbsoluteFile();
-        while (folder != null) {
-            File file = new File(folder, imagePath);
-            if (file.isFile()) {
-                try {
-                    return toFastFormat(ImageIO.read(file));
-                } catch (IOException e) {
-                    break; // the file exists but is not a valid picture
-                }
-            }
-            folder = folder.getParentFile();
+        BufferedImage image = readFromResources(imagePath);
+        if (image == null) {
+            System.out.println("Could not load image: " + imagePath + " -> using a color instead");
         }
-
-        System.out.println("Could not load image: " + imagePath + " -> using a color instead");
-        return null;
+        return image;
     }
 
     /**
@@ -73,48 +61,44 @@ public class ImageLoader {
         return folderCache.computeIfAbsent(folderPath, ImageLoader::readFolder);
     }
 
-    /** Actually reads the folder from the disk. */
+    /** Actually reads the folder (from the jar or the project folder). */
     private static List<BufferedImage> readFolder(String folderPath) {
         // The list we fill up and give back. It starts empty.
         List<BufferedImage> images = new ArrayList<>();
 
-        // Same search as in load(): start in the current folder and go up.
-        File folder = new File("").getAbsoluteFile();
-        // Keep going up while the folder we look for is NOT inside the current one.
-        // getParentFile() gives null when we are at the very top (/), then we stop.
-        while (folder != null && !new File(folder, folderPath).isDirectory()) {
-            folder = folder.getParentFile();
-        }
-        // We went all the way up and never found it.
-        if (folder == null) {
+        // Every file in the folder, sorted by name (same order every time, nicer for debugging)
+        List<String> paths = Resources.list(folderPath);
+        if (paths.isEmpty()) {
             System.out.println("Could not find image folder: " + folderPath + " -> using colors instead");
             return images;
         }
 
-        // listFiles() = every file inside the folder (an array, like {moto_B.png, var1_B.png, ...}).
-        File[] files = new File(folder, folderPath).listFiles();
-        // Sort by name: the order from listFiles() can be random,
-        Arrays.sort(files); // same order every time, nicer for debugging
         // Go through the files one by one.
-        for (File file : files) {
+        for (String path : paths) {
             // toLowerCase() so "CAR.PNG" works too, not only "car.png".
-            if (!file.getName().toLowerCase().endsWith(".png")) {
+            if (!path.toLowerCase().endsWith(".png")) {
                 continue; // skip anything that is not a picture
             }
-            try {
-                // ImageIO.read turns the file into a picture Java can draw.
-                BufferedImage image = toFastFormat(ImageIO.read(file));
-                // It gives null if the file is not a real picture (e.g. a broken .png).
-                if (image != null) {
-                    images.add(image);
-                }
-            } catch (IOException e) {
+            BufferedImage image = readFromResources(path);
+            // null if the file is not a real picture (e.g. a broken .png).
+            if (image != null) {
+                images.add(image);
+            } else {
                 // Reading failed: tell us in the console, skip this file, keep going.
-                System.out.println("Could not load image: " + file.getName());
+                System.out.println("Could not load image: " + path);
             }
         }
         // copyOf = a list nobody can change, so several threads can safely share it
         return List.copyOf(images);
+    }
+
+    // ImageIO.read turns the file into a picture Java can draw. null = missing or broken.
+    private static BufferedImage readFromResources(String path) {
+        try (InputStream stream = Resources.open(path)) {
+            return stream == null ? null : toFastFormat(ImageIO.read(stream));
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     /**
