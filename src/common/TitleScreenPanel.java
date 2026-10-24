@@ -19,7 +19,12 @@ public class TitleScreenPanel extends JPanel {
     private static final Font TITLE_FONT = new Font("Impact", Font.PLAIN, 70);
     private static final Font BUTTON_FONT = new Font("Arial", Font.BOLD, 28);
 
+    private static final Font STATUS_FONT = new Font("Arial", Font.BOLD, 18);
+
     private ScreenNavigator screenNavigator;
+
+    // Bottom line: is Supabase reachable? (filled in by MainWindow after its check)
+    private JLabel connectionLabel;
 
     public TitleScreenPanel(ScreenNavigator screenNavigator) {
         this.screenNavigator = screenNavigator;
@@ -31,6 +36,27 @@ public class TitleScreenPanel extends JPanel {
 
         createTitleLabel();
         createButtons();
+        createConnectionLabel();
+    }
+
+    private void createConnectionLabel() {
+        connectionLabel = new JLabel("Checking connection...", SwingConstants.CENTER);
+        connectionLabel.setFont(STATUS_FONT);
+        connectionLabel.setForeground(Color.LIGHT_GRAY);
+        connectionLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 25, 0));
+
+        add(connectionLabel, BorderLayout.SOUTH);
+    }
+
+    // true = online, false = offline
+    public void setConnectionStatus(boolean online) {
+        if (online) {
+            connectionLabel.setText("Online - scores go to the global leaderboard");
+            connectionLabel.setForeground(Color.GREEN);
+        } else {
+            connectionLabel.setText("Offline - scores are saved on this computer");
+            connectionLabel.setForeground(Color.ORANGE);
+        }
     }
 
     private void createTitleLabel() {
@@ -45,7 +71,7 @@ public class TitleScreenPanel extends JPanel {
     private void createButtons() {
         JPanel buttonPanel = new JPanel(new GridLayout(4, 1, 0, 20));
         buttonPanel.setOpaque(false);
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(60, 330, 80, 330));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(50, 330, 40, 330));
 
         JButton f1GameButton = createButton("F1 Game");
         f1GameButton.addActionListener(new ActionListener() {

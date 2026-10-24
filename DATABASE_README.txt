@@ -16,16 +16,35 @@ Every player is in a table only ONCE, with their BEST score.
 
 
 ---------------------------------------------------------------------
+0. ONLINE / OFFLINE
+---------------------------------------------------------------------
+At startup (and every time the menu or the Scores screen opens) the
+game checks if Supabase can be reached (3 s timeout, on a background
+thread, so nothing freezes). The menu shows "Online" or "Offline".
+
+    Online:  scores are saved to / loaded from Supabase.
+    Offline: scores are saved to / loaded from scores.db, a SQLite
+             file in the project folder (made automatically). The
+             Scores screen then says "Offline".
+
+Offline scores stay in scores.db, they are NOT copied to Supabase
+later. scores.db is in .gitignore (every computer has its own).
+The SQLite driver is lib/sqlite-jdbc-3.47.1.0.jar.
+
+
+---------------------------------------------------------------------
 1. SETUP (one time)
 ---------------------------------------------------------------------
-a) The driver: lib/postgresql-42.7.14.jar is already in the repo.
+a) The drivers: lib/postgresql-42.7.14.jar (Supabase) and
+   lib/sqlite-jdbc-3.47.1.0.jar (offline scores) are in the repo.
    - VS Code: nothing to do (.vscode/settings.json adds lib/*.jar).
      Ctrl+Shift+B compiles and runs with it too.
    - IntelliJ: File -> Project Structure -> Libraries -> + -> Java
-     -> pick lib/postgresql-42.7.14.jar.
+     -> pick both jars in lib/. Add the VM option
+     --enable-native-access=ALL-UNNAMED (SQLite loads a native library).
    - Terminal (Linux/Mac, on Windows use ; instead of :):
        javac -d out -cp "lib/*" src/common/*.java src/f1/*.java src/battletanks/*.java
-       java -cp "out:lib/*" common.Main
+       java --enable-native-access=ALL-UNNAMED -cp "out:lib/*" common.Main
 
 b) The password file:
    - Copy  config.example.properties  and name the copy

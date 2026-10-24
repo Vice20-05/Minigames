@@ -3,8 +3,10 @@ package common;
 import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.concurrent.ExecutionException;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.SwingWorker;
 
 /**
  * MainWindow = the main menu window. It opens first and swaps its screen between the
@@ -31,10 +33,7 @@ public class MainWindow extends JFrame implements ScreenNavigator {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
 
-        showPanel(new TitleScreenPanel(this));
-
-        setLocationRelativeTo(null);
-        setVisible(true);
+        showTitleScreen(); // shows the window and starts the first online check
     }
 
     // Removes the old screen and shows the new one.
@@ -54,9 +53,37 @@ public class MainWindow extends JFrame implements ScreenNavigator {
             gameWindow = null;          // first, so the close listener below does nothing twice
             closingWindow.dispose();    // stops the game loop (F1: windowClosed, tanks: removeNotify)
         }
-        showPanel(new TitleScreenPanel(this));
+        TitleScreenPanel titleScreen = new TitleScreenPanel(this);
+        showPanel(titleScreen);
+        if (!isVisible()) {
+            setLocationRelativeTo(null); // middle of the screen (now that pack() knows the size)
+        }
         setVisible(true);
         toFront();
+        checkConnectionInBackground(titleScreen);
+    }
+
+    /**
+     * Asks DB_Main if Supabase is reachable, on a BACKGROUND THREAD (it can take a few
+     * seconds without internet, the menu must not freeze), then shows the answer.
+     * The games use the answer too: online = Supabase, offline = scores.db on this computer.
+     */
+    private void checkConnectionInBackground(TitleScreenPanel titleScreen) {
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() {
+                return DB_Main.checkConnection();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    titleScreen.setConnectionStatus(get());
+                } catch (InterruptedException | ExecutionException e) {
+                    titleScreen.setConnectionStatus(false);
+                }
+            }
+        }.execute();
     }
 
     @Override

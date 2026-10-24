@@ -7,108 +7,85 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
 /**
- * DB_Main = the online leaderboard (Supabase = a PostgreSQL database on the internet).
+ * DB_Main = the leaderboards. ONLINE they are in Supabase (a PostgreSQL database on the
+ * internet), OFFLINE in a local SQLite file (scores.db in the project folder).
  *
- * It works like JDBC with SQLite, only the URL is different:
+ * It works the same way for both, only the URL is different:
  *   1) open a Connection   2) run SQL with a PreparedStatement   3) close it
  *
- * The login data (url, user, password) is NOT in the code, it is read from
+ * The Supabase login data (url, user, password) is NOT in the code, it is read from
  * config.properties in the project root (see config.example.properties).
  *
- * NO INTERNET? Nothing crashes: saveScore() returns false, getTopScores() an empty list.
+ * ONLINE OR OFFLINE?
+ *   checkConnection() tries Supabase (the menu calls it at startup and every time the menu
+ *   or the Scores screen opens). Until then, and when it fails, we are offline.
+ *   Online:  scores are saved to / loaded from Supabase.
+ *   Offline: scores are saved to / loaded from scores.db. They stay there (no syncing).
+ *   If an online save or load fails, DB_Main switches to offline and uses scores.db instead.
  *
- * Both methods wait for the internet (up to a few seconds), so call them from a
+ * Online calls wait for the internet (up to a few seconds), so call these methods from a
  * BACKGROUND thread (e.g. a SwingWorker), never directly from a button or the game loop.
  */
 public class DB_Main {
 
-    // The two leaderboards (table names in Supabase). Always use these, never type the name.
+    // The two leaderboards (same table names in Supabase and in scores.db). Always use these.
     public static final String F1 = "f1_scores";
     public static final String TANK = "tank_scores";
 
     private static final String CONFIG_FILE = "config.properties";
+    private static final String LOCAL_DB_URL = "jdbc:sqlite:scores.db"; // file in the project folder
     private static final int TOP_COUNT = 10;
-    private static final String TIMEOUT_SECONDS = "5"; // give up after 5 s without internet
+    private static final String TIMEOUT_SECONDS = "5";       // give up after 5 s without internet
+    private static final String CHECK_TIMEOUT_SECONDS = "3"; // the online check gives up sooner
+
+    // volatile = every thread sees the newest value (the check runs on a background thread)
+    private static volatile boolean online = false;
 
     private DB_Main() {
         // only static methods, no objects needed: DB_Main.saveScore(...)
     }
 
     /**
+     * Tries to reach Supabase (short timeout) and remembers the answer.
+     * @return true = online (Supabase works), false = offline (use scores.db)
+     */
+    public static boolean checkConnection() {
+        try (Connection conn = connect(CHECK_TIMEOUT_SECONDS)) {
+            online = conn.isValid(Integer.parseInt(CHECK_TIMEOUT_SECONDS));
+        } catch (SQLException | IOException e) {
+            System.out.println("Supabase not reachable, scores are saved on this computer: " + e.getMessage());
+            online = false;
+        }
+        return online;
+    }
+
+    /** The answer of the last checkConnection() (or false after an online call failed). */
+    public static boolean isOnline() {
+        return online;
+    }
+
+    /**
      * Saves a score, but keeps only the player's BEST one:
      *   - new name      -> a new row is added
-     *   - name exists   -> the score only changes if the new one is HIGHER (GREATEST)
+     *   - name exists   -> the score only changes if the new one is HIGHER
      *
      * @param table    DB_Main.F1 or DB_Main.TANK
-     * @return true if it was saved, false if not (no internet, wrong config...)
+     * @return true if it was saved (online or on this computer), false if not at all
      */
     public static boolean saveScore(String table, String username, int score) {
         if (!isValidTable(table)) {
             return false;
         }
-        // "ON CONFLICT (username)" = this name is already in the table (username is UNIQUE).
-        // EXCLUDED.score = the new score we just tried to insert.
-        String sql = "INSERT INTO " + table + " (username, score) VALUES (?, ?) "
-                   + "ON CONFLICT (username) DO UPDATE "
-                   + "SET score = GREATEST(" + table + ".score, EXCLUDED.score)";
-
-        // try-with-resources: the connection is closed automatically, also on errors
-        try (Connection conn = connect();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            stmt.setInt(2, score);
-            stmt.executeUpdate();
-            return true;
-        } catch (SQLException | IOException e) {
-            System.out.println("Couldn't save the score: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * The top 10 of a leaderboard, best first.
-     * Every row is { username (String), score (Integer) }, ready for a JTable:
-     *
-     *   DefaultTableModel model = new DefaultTableModel(new String[] {"Name", "Score"}, 0);
-     *   for (Object[] row : DB_Main.getTopScores(DB_Main.F1)) {
-     *       model.addRow(row);
-     *   }
-     *
-     * @return the rows, or an EMPTY list if it didn't work (no internet...)
-     */
-    public static List<Object[]> getTopScores(String table) {
-        try {
-            return loadTopScores(table);
-        } catch (SQLException | IOException e) {
-            System.out.println("Couldn't load the leaderboard: " + e.getMessage());
-            return new ArrayList<>(); // don't return half a list
-        }
-    }
-
-    /**
-     * Same as getTopScores(), but it THROWS when it doesn't work instead of giving back an
-     * empty list. The Scores screen uses it to tell "no internet" apart from "nobody played yet".
-     */
-    public static List<Object[]> loadTopScores(String table) throws SQLException, IOException {
-        List<Object[]> rows = new ArrayList<>();
-        if (!isValidTable(table)) {
-            return rows;
-        }
-        String sql = "SELECT username, score FROM " + table + " ORDER BY score DESC LIMIT " + TOP_COUNT;
-
-        try (Connection conn = connect();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet result = stmt.executeQuery()) {
-            while (result.next()) {
-                rows.add(new Object[] { result.getString("username"), result.getInt("score") });
-            }
-        }
-        return rows;
+        // PostgreSQL calls "the bigger one" GREATEST, SQLite calls it MAX
+        String onlineSql = upsert(table, "GREATEST(" + table + ".score, EXCLUDED.score)");
+        String localSql = upsert(table, "MAX(" + table + ".score, EXCLUDED.score)");
+        return save(onlineSql, localSql, username, score);
     }
 
     /**
@@ -117,30 +94,110 @@ public class DB_Main {
      *   - new name      -> a new row with these points
      *   - name exists   -> old score + points
      *
-     * @return true if it was saved, false if not (no internet, wrong config...)
+     * @return true if it was saved (online or on this computer), false if not at all
      */
     public static boolean addPoints(String table, String username, int points) {
         if (!isValidTable(table)) {
             return false;
         }
-        String sql = "INSERT INTO " + table + " (username, score) VALUES (?, ?) "
-                   + "ON CONFLICT (username) DO UPDATE "
-                   + "SET score = " + table + ".score + EXCLUDED.score";
+        String sql = upsert(table, table + ".score + EXCLUDED.score"); // same SQL in both databases
+        return save(sql, sql, username, points);
+    }
 
-        try (Connection conn = connect();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, username);
-            stmt.setInt(2, points);
-            stmt.executeUpdate();
+    /**
+     * The top 10 of a leaderboard, best first, from Supabase when online,
+     * otherwise from scores.db. Every row is { username (String), score (Integer) },
+     * ready for a JTable:
+     *
+     *   DefaultTableModel model = new DefaultTableModel(new String[] {"Name", "Score"}, 0);
+     *   for (Object[] row : DB_Main.getTopScores(DB_Main.F1)) {
+     *       model.addRow(row);
+     *   }
+     *
+     * @return the rows, or an EMPTY list if it didn't work at all
+     */
+    public static List<Object[]> getTopScores(String table) {
+        try {
+            return loadTopScores(table);
+        } catch (SQLException e) {
+            System.out.println("Couldn't load the leaderboard: " + e.getMessage());
+            return new ArrayList<>(); // don't return half a list
+        }
+    }
+
+    /**
+     * Same as getTopScores(), but it THROWS when even scores.db can't be read, instead of
+     * giving back an empty list. Ask isOnline() afterwards to know where the rows came from.
+     */
+    public static List<Object[]> loadTopScores(String table) throws SQLException {
+        if (!isValidTable(table)) {
+            return new ArrayList<>();
+        }
+        String sql = "SELECT username, score FROM " + table + " ORDER BY score DESC LIMIT " + TOP_COUNT;
+
+        if (online) {
+            try (Connection conn = connect(TIMEOUT_SECONDS)) {
+                return readRows(conn, sql);
+            } catch (SQLException | IOException e) {
+                System.out.println("Couldn't load online scores, showing the ones on this computer: "
+                        + e.getMessage());
+                online = false;
+            }
+        }
+        try (Connection conn = connectLocal()) {
+            return readRows(conn, sql);
+        }
+    }
+
+    // "ON CONFLICT (username)" = this name is already in the table (username is UNIQUE).
+    // EXCLUDED.score = the new score we just tried to insert.
+    private static String upsert(String table, String newScore) {
+        return "INSERT INTO " + table + " (username, score) VALUES (?, ?) "
+             + "ON CONFLICT (username) DO UPDATE SET score = " + newScore;
+    }
+
+    /** Online: try Supabase first. Offline (or Supabase failed): save in scores.db. */
+    private static boolean save(String onlineSql, String localSql, String username, int score) {
+        if (online) {
+            // try-with-resources: the connection is closed automatically, also on errors
+            try (Connection conn = connect(TIMEOUT_SECONDS)) {
+                runUpdate(conn, onlineSql, username, score);
+                return true;
+            } catch (SQLException | IOException e) {
+                System.out.println("Couldn't save online, saving on this computer: " + e.getMessage());
+                online = false;
+            }
+        }
+        try (Connection conn = connectLocal()) {
+            runUpdate(conn, localSql, username, score);
             return true;
-        } catch (SQLException | IOException e) {
+        } catch (SQLException e) {
             System.out.println("Couldn't save the score: " + e.getMessage());
             return false;
         }
     }
 
-    /** Opens a connection with the data from config.properties. */
-    private static Connection connect() throws IOException, SQLException {
+    private static void runUpdate(Connection conn, String sql, String username, int score) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setInt(2, score);
+            stmt.executeUpdate();
+        }
+    }
+
+    private static List<Object[]> readRows(Connection conn, String sql) throws SQLException {
+        List<Object[]> rows = new ArrayList<>();
+        try (PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet result = stmt.executeQuery()) {
+            while (result.next()) {
+                rows.add(new Object[] { result.getString("username"), result.getInt("score") });
+            }
+        }
+        return rows;
+    }
+
+    /** Opens a Supabase connection with the data from config.properties. */
+    private static Connection connect(String timeoutSeconds) throws IOException, SQLException {
         Properties config = new Properties();
         try (FileInputStream file = new FileInputStream(CONFIG_FILE)) {
             config.load(file);
@@ -149,9 +206,30 @@ public class DB_Main {
         Properties login = new Properties();
         login.setProperty("user", config.getProperty("db.user", ""));
         login.setProperty("password", config.getProperty("db.password", ""));
-        login.setProperty("connectTimeout", TIMEOUT_SECONDS); // finding the server
-        login.setProperty("socketTimeout", TIMEOUT_SECONDS);  // waiting for an answer
+        login.setProperty("connectTimeout", timeoutSeconds); // finding the server
+        login.setProperty("socketTimeout", timeoutSeconds);  // waiting for an answer
+        login.setProperty("loginTimeout", timeoutSeconds);   // the whole login
         return DriverManager.getConnection(config.getProperty("db.url", ""), login);
+    }
+
+    /**
+     * Opens scores.db (SQLite makes the file the first time) and makes sure both
+     * tables exist, with the same columns as in Supabase.
+     */
+    private static Connection connectLocal() throws SQLException {
+        Connection conn = DriverManager.getConnection(LOCAL_DB_URL);
+        try (Statement stmt = conn.createStatement()) {
+            for (String table : new String[] { F1, TANK }) {
+                stmt.execute("CREATE TABLE IF NOT EXISTS " + table + " ("
+                           + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                           + "username TEXT NOT NULL UNIQUE, "
+                           + "score INTEGER NOT NULL)");
+            }
+        } catch (SQLException e) {
+            conn.close();
+            throw e;
+        }
+        return conn;
     }
 
     /**
