@@ -1,23 +1,23 @@
 MINI GAMES - F1 Racing and Battle Tanks
 =======================================
 
-Java is included, you don't need to install anything.
+You need Java 21 or newer. Don't have it? Get it free from https://adoptium.net
+(pick "Temurin 21" or newer and install it like any program).
 Keep the files in this folder together.
 
 WINDOWS
-    Double-click  Minigames.bat
-    (If Windows shows "Windows protected your PC": More info -> Run anyway.)
+    Double-click  run.bat   (or double-click Minigames.jar)
+    If Windows shows "Windows protected your PC": More info -> Run anyway.
+
+MACOS
+    Double-click  run.command   (it opens a Terminal window, leave it open while playing)
+    The first time, macOS blocks it because it isn't from the App Store:
+      - click Done
+      - open System Settings -> Privacy & Security, scroll down, click "Open Anyway"
 
 LINUX
-    Double-click  Minigames.sh  (or run  ./Minigames.sh  in a terminal)
-
-MAC
-    Double-click  Minigames.app
-    The first time, macOS says it can't check the app (it isn't from the App Store):
-      - click Done / OK
-      - open System Settings -> Privacy & Security, scroll down, click "Open Anyway"
-    Or in the Terminal, once:   xattr -dr com.apple.quarantine Minigames.app
-    (Move Minigames.app out of the Downloads folder first, e.g. to Applications.)
+    Double-click  run.sh   (or in a terminal:  ./run.sh)
+    If it doesn't start: right-click run.sh -> Properties -> allow running it as a program.
 
 MUSIC
     The volume slider and the Mute button are on the main menu.
@@ -28,5 +28,4 @@ SCORES
     Without internet they are saved on this computer, in the ".minigames" folder
     in your home folder (with your music setting).
 
-Music credits: resources/music/CREDITS.txt in the game's source code
-(all songs are CC0 / public domain, from OpenGameArt.org).
+Music: all songs are CC0 (public domain), from OpenGameArt.org.

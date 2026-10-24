@@ -104,9 +104,11 @@ public class Resources {
 
     // Start in the current folder and go up one folder at a time. null = not found anywhere.
     private static File findFile(String path) {
+        // Our paths use "/", a file path on this computer uses its own separator ("\" on Windows)
+        String filePath = path.replace('/', File.separatorChar);
         File folder = new File("").getAbsoluteFile();
         while (folder != null) {
-            File file = new File(folder, path);
+            File file = new File(folder, filePath);
             if (file.exists()) {
                 return file;
             }
