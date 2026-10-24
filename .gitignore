@@ -1,10 +1,45 @@
-# Compiled Java files (made by javac, no need to push them)
+# Build output
 out/
+bin/
+build/
+target/
 *.class
+*.jar
+!lib/*.jar
+hs_err_pid*.log
+replay_pid*.log
+.attach_pid*
+*.log
 
-# Personal guide, keep it local
+# Secrets
+config.properties
+
+# Personal notes
 src/f1_game/base/Victor.txt
 src/f1/Victor.txt
 
-# Database password (copy config.example.properties to make your own)
-config.properties
+# IDEs (keep the shared VS Code files)
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+nbproject/private/
+nbactions.xml
+nb-configuration.xml
+.classpath
+.project
+.settings/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+
+# Archives: commit source code, not zips
+*.zip
