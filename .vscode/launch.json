@@ -3,9 +3,16 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Launch F1 game",
+            "name": "Launch Main Menu",
             "request": "launch",
-            "mainClass": "f1_game.f1Main",
+            "mainClass": "common.Main",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "java",
+            "name": "Launch F1 game only",
+            "request": "launch",
+            "mainClass": "f1.f1Main",
             "cwd": "${workspaceFolder}"
         }
     ]

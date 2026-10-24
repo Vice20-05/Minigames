@@ -1,0 +1,8 @@
+{
+    // The Java code lives in "src" (packages common, f1, battletanks). Saying it here makes VS Code
+    // re-scan the project when this file changes, so new .java files are found.
+    "java.project.sourcePaths": ["src"],
+    // Every .jar in lib (the PostgreSQL driver), so the Run button finds it too
+    "java.project.referencedLibraries": ["lib/**/*.jar"],
+    "java.configuration.updateBuildConfiguration": "automatic"
+}
