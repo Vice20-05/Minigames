@@ -1,0 +1,158 @@
+=====================================================================
+   MINI GAMES - HOW TO RUN, TEST, AND CHANGE THE MUSIC
+   (temporary guide for the team while we test the release)
+=====================================================================
+
+Contents
+  1. Run the game from the code (NetBeans / VS Code)
+  2. Run the game like a player (the release zip)
+  3. What to test (checklist)
+  4. Change the music (no code needed)
+  5. Send your changes (branch + pull request)
+
+
+---------------------------------------------------------------------
+1. RUN THE GAME FROM THE CODE
+---------------------------------------------------------------------
+Needs: JDK 21 or newer.
+
+a) Get config.properties from the project manager and put it in the
+   project folder, next to README.md. Without it the game still runs,
+   but only offline. NEVER commit this file (git already ignores it).
+
+b) NetBeans: the first-time setup is in README.md, section
+   "For developers" -> "NetBeans". After that:
+   click the green Run Project button (or press F6).
+
+c) VS Code: open the folder, then Run and Debug -> "Launch Main Menu"
+   (or press Ctrl+Shift+B).
+
+The main menu opens. At the bottom it says:
+   green  "Online"  = connected, scores go to the global leaderboard
+   orange "Offline" = no connection, scores are saved on this computer
+
+
+---------------------------------------------------------------------
+2. RUN THE GAME LIKE A PLAYER (the release zip)
+---------------------------------------------------------------------
+Needs: Java 21 or newer (free: https://adoptium.net).
+
+1. Download Minigames.zip (from the GitHub Releases page, or the
+   project manager sends it) and unzip it anywhere, e.g. Desktop.
+2. In the "Minigames" folder:
+     Windows: double-click run.bat (or Minigames.jar)
+     macOS:   double-click run.command
+              (first time: System Settings -> Privacy & Security
+               -> scroll down -> "Open Anyway")
+     Linux:   double-click run.sh
+No config.properties needed here, the zip connects by itself.
+
+
+---------------------------------------------------------------------
+3. WHAT TO TEST (tick each one)
+---------------------------------------------------------------------
+Menu
+  [ ] The menu opens and says "Online" (green).
+  [ ] Menu music plays.
+  [ ] Moving the Music slider makes it quieter / louder.
+  [ ] Mute stops the music, Unmute brings it back.
+  [ ] Close the game, open it again: the volume / mute is the same.
+
+F1 Racing
+  [ ] F1 Game opens with the road, cars and the F1 music.
+  [ ] W / Up arrow starts, the car drives, traffic comes.
+  [ ] After a crash: type a name, press Enter -> it says saved.
+  [ ] Esc goes back to the menu, the menu music comes back.
+
+Battle Tanks
+  [ ] Battle Tanks opens with the background, tanks, walls and its music.
+  [ ] Player 1 (W A S D + Left Shift) and Player 2 (arrows + Right Shift)
+      can move and shoot. Walls can be placed in the build phase.
+  [ ] After a win the score is saved, "TITLE SCREEN" goes back to the menu.
+
+Scores
+  [ ] Scores shows both leaderboards, with your test names in them.
+
+No internet
+  [ ] Turn off Wi-Fi (or unplug the cable), start the game:
+      the menu says "Offline", the games still work.
+  [ ] Save a score offline, open Scores: it's there (label "Offline").
+  [ ] Turn Wi-Fi back on, restart: "Online" again.
+      (Offline scores stay on that computer, they are not uploaded.)
+
+Found a problem? Write down: what you did, what happened, what you
+expected, and which computer (Windows / macOS / Linux). A screenshot helps.
+Please use test names starting with TEST_ so we can delete them later.
+
+
+---------------------------------------------------------------------
+4. CHANGE THE MUSIC (no code needed)
+---------------------------------------------------------------------
+The game plays 3 songs, all in the folder  resources/music :
+
+     menu.wav  -> main menu and Scores screen
+     f1.wav    -> F1 Racing
+     tank.wav  -> Battle Tanks
+
+To change a song you REPLACE one of these files with a new file that
+has EXACTLY the same name. The game finds it by that name, so nothing
+in the code changes. Each song repeats forever, so a song that loops
+nicely sounds best.
+
+!!! The file MUST be a real WAV file, 16-bit PCM.
+    - An MP3 does NOT work, not even if you rename it to .wav.
+      (Renaming doesn't change what's inside the file.)
+    - A WAV in "32-bit float" does NOT work either.
+    If the file is wrong, the game still runs, just with no music
+    for that screen.
+
+STEP BY STEP (with Audacity, free: https://www.audacityteam.org)
+
+  1. Pick a song you're ALLOWED to use: your own, or CC0 / public
+     domain (OpenGameArt.org -> search, filter License "CC0").
+     Don't use songs from YouTube, Spotify etc.
+
+  2. In Audacity: File -> Open... -> choose your song
+     (MP3, OGG, WAV, FLAC... all fine here).
+
+  3. Optional, to keep the file small (recommended):
+       - Tracks -> Mix -> Mix Stereo Down to Mono
+       - Make it 1-3 minutes long (select the part you don't want,
+         press Delete).
+
+  4. File -> Export Audio...   (older Audacity: File -> Export -> Export as WAV)
+       File Name:   menu   or   f1   or   tank   (the one you replace)
+       Format:      WAV (Microsoft)
+       Encoding:    Signed 16-bit PCM      <- important, not "32-bit float"
+       Channels:    Mono                    (if you have the option)
+       Sample Rate: 22050 Hz                (if you have the option)
+       Folder:      the project's  resources/music  folder
+     Click Export, and say YES to replace the old file.
+
+  5. Run the game (part 1) and open that screen: you hear the new song.
+     Still the old song? Check the file name is exactly right
+     (all small letters, ".wav" at the end, not "f1.wav.wav").
+     No music at all? The music might be muted (menu button), or the
+     file isn't 16-bit WAV: export it again (step 4).
+
+  6. Open resources/music/CREDITS.txt (Notepad / any text editor) and
+     change the line for that song: song name, author, link, license.
+
+SIZE: about 2.6 MB per minute (mono, 22050 Hz). Stereo 44100 Hz is
+about 10 MB per minute, it works too but makes the game download bigger.
+
+
+---------------------------------------------------------------------
+5. SEND YOUR CHANGES (branch + pull request)
+---------------------------------------------------------------------
+Please don't push to main or dev directly.
+
+NetBeans:
+  1. Team -> Branch/Tag -> Create Branch...  name it e.g.  music/new-menu-song
+     (tick "Checkout Created Branch").
+  2. Change the files (new .wav + CREDITS.txt).
+  3. Team -> Commit...  write what you changed -> Commit.
+  4. Team -> Remote -> Push...  push your new branch.
+  5. On github.com/Vice20-05/Minigames: click "Compare & pull request",
+     choose  base: dev , and create the pull request.
+The project manager checks it, merges it and makes a new release zip.

@@ -4,6 +4,8 @@ A Java Swing game collection with two game modes, **F1 Racing** and **Tank Battl
 
 Built as a university Java project.
 
+> 🧪 **Team, while we test:** see [`TESTING_AND_MUSIC.txt`](TESTING_AND_MUSIC.txt) for how to run the game, what to test, and how to change the music without touching the code.
+
 ---
 
 ## 📸 Screenshots
