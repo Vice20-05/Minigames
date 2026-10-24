@@ -28,6 +28,7 @@ public class KeyHandler extends KeyAdapter {
     private boolean leftPressed;
     private boolean rightPressed;
     private boolean restartPressed;
+    private boolean escapePressed;
 
     // Characters typed since the last takeTypedKeys(): letters, numbers, ENTER, BACKSPACE, ESCAPE
     private final StringBuilder typed = new StringBuilder();
@@ -69,6 +70,7 @@ public class KeyHandler extends KeyAdapter {
             case KeyEvent.VK_A, KeyEvent.VK_LEFT -> leftPressed = pressed;
             case KeyEvent.VK_D, KeyEvent.VK_RIGHT -> rightPressed = pressed;
             case KeyEvent.VK_R -> restartPressed = pressed;
+            case KeyEvent.VK_ESCAPE -> escapePressed = pressed;
             default -> {
                 // any other key: we don't care
             }
@@ -93,6 +95,10 @@ public class KeyHandler extends KeyAdapter {
 
     public boolean isRestartPressed() {
         return restartPressed;
+    }
+
+    public boolean isEscapePressed() {
+        return escapePressed;
     }
 
     /** Is any driving key (WASD or an arrow) held right now? */

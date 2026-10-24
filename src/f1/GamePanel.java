@@ -7,6 +7,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.List;
@@ -200,12 +201,12 @@ public class GamePanel extends JPanel {
         String typed = keys.takeTypedKeys();
 
         if (gameOver) {
-            if (scoreSubmitter.canRestart()) {
-                if (keys.isRestartPressed()) {
-                    resetGame();
-                }
+            if (keys.isEscapePressed()) {
+                backToMenu(); // skip saving
+            } else if (keys.isRestartPressed() && scoreSubmitter.canRestart()) {
+                resetGame(); // R never saves anything
             } else {
-                scoreSubmitter.update(typed, keys); // typing the name (R is a letter here)
+                scoreSubmitter.update(typed, keys); // typing the name / Enter = save
             }
             return; // when the game is over, nothing moves
         }
@@ -256,6 +257,18 @@ public class GamePanel extends JPanel {
         // Count down the popup text, it disappears when it reaches 0
         if (popupTicks > 0) {
             popupTicks--;
+        }
+    }
+
+    /**
+     * Closes the game window. The main menu listens for that and shows itself again
+     * (see common.MainWindow). Started without the menu (f1Main), this just closes the game.
+     */
+    private void backToMenu() {
+        stop();
+        Window window = SwingUtilities.getWindowAncestor(this);
+        if (window != null) {
+            window.dispose();
         }
     }
 
@@ -472,7 +485,7 @@ public class GamePanel extends JPanel {
         g.setFont(new Font("Arial", Font.PLAIN, 22));
         drawCentered(g, "Score: " + (int) getScore(), GameConfig.WINDOW_HEIGHT / 2 + 10);
         drawCentered(g, "Near misses: " + nearMissCount, GameConfig.WINDOW_HEIGHT / 2 + 45);
-        scoreSubmitter.draw(g, GameConfig.WINDOW_HEIGHT / 2 + 95); // name input + "Press R"
+        scoreSubmitter.draw(g, GameConfig.WINDOW_HEIGHT / 2 + 95); // name input + the controls
     }
 
     /** Draws text in the horizontal middle of the window. */

@@ -16,21 +16,28 @@ import javax.swing.SwingWorker;
  * How GamePanel uses it:
  *   start(score)          when the player crashes
  *   update(typed, keys)   every frame while the game over screen is shown
- *   canRestart()          may R restart now? (NOT while typing, a name can contain an R)
- *   draw(g, y)            draws the name / "Saving..." / "Saved!" text
+ *   canRestart()          may R restart now? (only while the name is still empty, see below)
+ *   draw(g, y)            draws the name / "Saving..." / "Saved!" text and the controls
+ *
+ * The controls on the game over screen:
+ *   name + Enter  -> save the score to the F1 table in Supabase
+ *   R             -> restart right away, nothing is saved
+ *   Esc           -> back to the main menu, nothing is saved (GamePanel handles Esc)
+ *
+ * R is also a letter. So R restarts only while the name is EMPTY; once you started typing,
+ * R is just a letter of the name (Backspace everything to restart with R again).
  *
  * It goes through these steps (a "state"):
  *
  *   TYPING --Enter--> SAVING --> SAVED   (it worked)
  *                            --> FAILED  (no internet, wrong password...)
- *   TYPING --Esc----> SKIPPED            (the player doesn't want to save)
  */
 public class ScoreSubmitter {
 
     // (Not just "State": SwingWorker already has its own State, Java would mix them up.)
-    private enum SaveState { TYPING, SAVING, SAVED, FAILED, SKIPPED }
+    private enum SaveState { TYPING, SAVING, SAVED, FAILED }
 
-    private SaveState state = SaveState.SKIPPED; // nothing to do until the first start()
+    private SaveState state = SaveState.SAVED; // nothing to do until the first start()
     private int score;                   // the score of the run that just ended
     private String name = "";            // what is typed right now
     private String lastName = "";        // the name used last time (only while the game is open)
@@ -42,14 +49,14 @@ public class ScoreSubmitter {
     /** The player crashed: get ready to type a name for this score. */
     public void start(double score) {
         this.score = (int) score; // the database wants a whole number
-        name = lastName;          // filled in already, so Enter is enough to save again
+        name = "";                // empty, so R can restart right away (Enter alone saves as lastName)
         state = SaveState.TYPING;
         waitForKeyRelease = true;
     }
 
-    /** May R restart the game now? Not while typing, otherwise a name with an R restarts it. */
+    /** May R restart the game now? Yes, unless a name is being typed (then R is a letter). */
     public boolean canRestart() {
-        return state != SaveState.TYPING;
+        return state != SaveState.TYPING || name.isEmpty();
     }
 
     /**
@@ -71,13 +78,15 @@ public class ScoreSubmitter {
         // Go through the typed keys one by one, in the order they were pressed
         for (char c : typed.toCharArray()) {
             if (c == KeyHandler.ENTER) {
-                if (!name.isEmpty()) { // empty name + Enter = do nothing
+                if (name.isEmpty()) {
+                    name = lastName; // empty + Enter = save again with the last name (if there is one)
+                }
+                if (!name.isEmpty()) {
                     saveInBackground();
                     return;
                 }
             } else if (c == KeyHandler.ESCAPE) {
-                state = SaveState.SKIPPED;
-                return;
+                return; // GamePanel already went back to the menu
             } else if (c == KeyHandler.BACKSPACE) {
                 if (!name.isEmpty()) {
                     name = name.substring(0, name.length() - 1); // cut the last letter
@@ -137,8 +146,17 @@ public class ScoreSubmitter {
             g.setColor(Color.WHITE);
             drawCentered(g, "Enter your name: " + name + "_", y);
             g.setFont(new Font("Arial", Font.PLAIN, 16));
-            drawCentered(g, "[Enter] save    [Esc] skip", y + 35);
-            return; // no "Press R" while typing, R is a letter now
+            if (name.isEmpty() && !lastName.isEmpty()) {
+                g.setColor(Color.LIGHT_GRAY);
+                drawCentered(g, "(Enter = save as " + lastName + ")", y + 25);
+            }
+            g.setColor(Color.WHITE);
+            if (name.isEmpty()) {
+                drawCentered(g, "[Enter] save    [R] restart    [Esc] menu", y + 55);
+            } else {
+                drawCentered(g, "[Enter] save    [Esc] menu", y + 55); // R is a letter now
+            }
+            return;
         }
 
         if (state == SaveState.SAVING) {
@@ -149,12 +167,12 @@ public class ScoreSubmitter {
             drawCentered(g, "Saved!", y);
         } else if (state == SaveState.FAILED) {
             g.setColor(Color.ORANGE);
-            drawCentered(g, "Couldn't save (no internet?)", y);
+            drawCentered(g, "Couldn't save score", y);
         }
-        // SKIPPED: no status text, only "Press R"
 
         g.setColor(Color.WHITE);
-        drawCentered(g, "Press R to restart", y + 35);
+        g.setFont(new Font("Arial", Font.PLAIN, 16));
+        drawCentered(g, "[R] restart    [Esc] menu", y + 55);
     }
 
     /** Draws text in the horizontal middle of the window (same as in GamePanel). */

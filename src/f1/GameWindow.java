@@ -9,8 +9,9 @@ import javax.swing.SwingUtilities;
  * GameWindow = the window (JFrame) that holds the game.
  *
  * It also has a main() method, so you can start JUST the F1 game for testing,
- * without the main menu. Later the main menu (src/common/Main.java) can open it with:
+ * without the main menu. The main menu (common.MainWindow) opens it with:
  *     new f1.GameWindow();
+ * and shows itself again when this window closes (Esc on the game over screen, or the X).
  */
 public class GameWindow extends JFrame {
 

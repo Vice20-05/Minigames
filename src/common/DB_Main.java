@@ -82,6 +82,19 @@ public class DB_Main {
      * @return the rows, or an EMPTY list if it didn't work (no internet...)
      */
     public static List<Object[]> getTopScores(String table) {
+        try {
+            return loadTopScores(table);
+        } catch (SQLException | IOException e) {
+            System.out.println("Couldn't load the leaderboard: " + e.getMessage());
+            return new ArrayList<>(); // don't return half a list
+        }
+    }
+
+    /**
+     * Same as getTopScores(), but it THROWS when it doesn't work instead of giving back an
+     * empty list. The Scores screen uses it to tell "no internet" apart from "nobody played yet".
+     */
+    public static List<Object[]> loadTopScores(String table) throws SQLException, IOException {
         List<Object[]> rows = new ArrayList<>();
         if (!isValidTable(table)) {
             return rows;
@@ -94,11 +107,36 @@ public class DB_Main {
             while (result.next()) {
                 rows.add(new Object[] { result.getString("username"), result.getInt("score") });
             }
-        } catch (SQLException | IOException e) {
-            System.out.println("Couldn't load the leaderboard: " + e.getMessage());
-            rows.clear(); // don't return half a list
         }
         return rows;
+    }
+
+    /**
+     * ADDS points to the player's score instead of keeping the best one (used for Battle Tanks:
+     * every win = +1, so the score is the number of wins):
+     *   - new name      -> a new row with these points
+     *   - name exists   -> old score + points
+     *
+     * @return true if it was saved, false if not (no internet, wrong config...)
+     */
+    public static boolean addPoints(String table, String username, int points) {
+        if (!isValidTable(table)) {
+            return false;
+        }
+        String sql = "INSERT INTO " + table + " (username, score) VALUES (?, ?) "
+                   + "ON CONFLICT (username) DO UPDATE "
+                   + "SET score = " + table + ".score + EXCLUDED.score";
+
+        try (Connection conn = connect();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            stmt.setInt(2, points);
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException | IOException e) {
+            System.out.println("Couldn't save the score: " + e.getMessage());
+            return false;
+        }
     }
 
     /** Opens a connection with the data from config.properties. */

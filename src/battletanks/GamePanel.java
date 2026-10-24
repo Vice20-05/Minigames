@@ -20,6 +20,9 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import common.ScoreRepository;
+import common.ScreenNavigator;
+
 // The arena where everything is drawn.
 public class GamePanel extends JPanel implements Updatable, KeyListener {
 

@@ -43,7 +43,7 @@ b) The password file:
 
 
 ---------------------------------------------------------------------
-2. THE 2 METHODS
+2. THE METHODS
 ---------------------------------------------------------------------
     DB_Main.F1     = "f1_scores"     always use these constants,
     DB_Main.TANK   = "tank_scores"   never type the table name
@@ -57,7 +57,17 @@ b) The password file:
         The top 10, best first. Every row = { username, score }.
         No internet -> an EMPTY list (not null, no crash).
 
-IMPORTANT: both can take up to ~5-10 seconds without internet.
+    List<Object[]> DB_Main.loadTopScores(table)
+        Same as getTopScores, but it THROWS (SQLException / IOException)
+        when it doesn't work. The Scores screen uses it to show
+        "Couldn't load scores" instead of "No scores yet".
+
+    boolean DB_Main.addPoints(table, username, points)
+        ADDS the points to the player's score (new name -> new row).
+        Battle Tanks uses it: every win = +1, so score = number of wins.
+        true = saved, false = didn't work (no internet...).
+
+IMPORTANT: all of them can take up to ~5-10 seconds without internet.
 Never call them directly on the Swing thread (in a button click,
 in paintComponent, in the game loop...) or the window freezes.
 Use a SwingWorker like in the examples below.
@@ -93,8 +103,9 @@ Use a SwingWorker like in the examples below.
     }.execute();
 
 (The F1 game already does this itself on its game over screen, in
-src/f1/ScoreSubmitter.java, saveInBackground(). You can
-copy that class for the tank game: only DB_Main.F1 changes to TANK.)
+src/f1/ScoreSubmitter.java, saveInBackground().
+The tank game saves through src/common/TankScoreRepository.java:
+winner +1 win, loser +0, so both names show up on the leaderboard.)
 
 
 ---------------------------------------------------------------------
