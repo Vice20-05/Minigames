@@ -16,6 +16,7 @@ config.properties
 
 # Personal notes
 src/f1_game/base/Victor.txt
+src/f1/Victor.txt
 
 # IDEs (keep the shared VS Code files)
 .idea/
