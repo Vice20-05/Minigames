@@ -100,8 +100,7 @@ Minigames/
 │   ├── textures/
 │   │   ├── f1/          # F1 images
 │   │   └── battletanks/ # Tank Battle images
-│   ├── sounds/          # Menu, F1 and Tank songs (WAV)
-│   └── music/           # earlier CC0 songs + CREDITS.txt (not played anymore)
+│   └── sounds/          # Menu, F1 and Tank songs (WAV)
 ├── lib/                 # PostgreSQL + SQLite JDBC drivers
 ├── docs/
 │   ├── screenshots/     # Images used in this README
