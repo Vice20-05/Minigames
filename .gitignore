@@ -32,7 +32,10 @@ src/f1/Victor.txt
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
-nbproject/private/
+# NetBeans makes these when the project is opened (see README, "For developers")
+nbproject/
+/build.xml
+/manifest.mf
 nbactions.xml
 nb-configuration.xml
 .classpath
