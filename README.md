@@ -6,6 +6,18 @@ Built as a university Java project.
 
 ---
 
+## 📸 Screenshots
+
+| Main menu | Scores |
+|---|---|
+| ![Main menu](docs/screenshots/main-menu.png) | ![Scores screen with the F1 and Battle Tanks leaderboards](docs/screenshots/scores.png) |
+
+| F1 Racing | Battle Tanks |
+|---|---|
+| <img src="docs/screenshots/f1-racing.png" alt="F1 Racing with traffic, a roadblock and a pothole" width="380"> | ![Battle Tanks arena](docs/screenshots/battle-tanks.png) |
+
+---
+
 ## 👥 Team
 
 | Member | GitHub | Role |
@@ -61,7 +73,8 @@ A local 2-player tank fight on a destructible battlefield.
 - Each game mode has its **own leaderboard**
 - Scores are saved online in **Supabase** (PostgreSQL)
 - The Scores screen shows both leaderboards side by side: player name and score, highest first (top 10)
-- If there's no internet connection, the games still work. Saving just shows a "Couldn't save score" message instead of crashing
+- The game checks the connection at startup. The menu shows **Online** or **Offline**
+- If there's no internet connection, the games still work and scores are saved in a local SQLite database (`scores.db`). The Scores screen then shows those local scores with an **Offline** label (offline scores are not uploaded later)
 
 ---
 
@@ -77,7 +90,8 @@ Minigames/
 │   └── textures/
 │       ├── f1/          # F1 images
 │       └── battletanks/ # Tank Battle images
-├── lib/                 # PostgreSQL JDBC driver
+├── lib/                 # PostgreSQL + SQLite JDBC drivers
+├── docs/screenshots/    # Images used in this README
 ├── config.example.properties
 └── README.md
 ```
@@ -138,4 +152,4 @@ The main menu has four options: **F1 Game**, **Battle Tanks**, **Scores** and **
 | Leaderboard shows name and score | ✅ Done |
 | Global online leaderboard | ✅ Done |
 | Core game works without internet | ✅ Done |
-| Offline local database | ⏳ Not yet |
+| Offline local database (SQLite) | ✅ Done |
