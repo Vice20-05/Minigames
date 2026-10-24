@@ -207,8 +207,8 @@ If `config.properties` exists, a copy goes **inside the jar**, so players are on
 | Tank Battle, 2 players (WASD + Left Shift / Arrows + Right Shift) | ✅ Done |
 | Placeable blocks as obstacles and cover | ✅ Done |
 | Separate leaderboard per game mode | ✅ Done |
-| Scores saved in a database (Supabase) | ✅ Done |
+| Scores saved in a online database (Supabase) | ✅ Done |
 | Leaderboard shows name and score | ✅ Done |
 | Global online leaderboard | ✅ Done |
-| Core game works without internet | ✅ Done |
-| Offline local database (SQLite) | ✅ Done |
+| Core game works without internet F1 game, Battle Tanks need internet | ✅ Done |
+| Offline local database  ( only for f1 game  ,SQLite) | ✅ Done |
