@@ -14,6 +14,10 @@ replay_pid*.log
 # Secrets
 config.properties
 
+# Local offline scores (SQLite), made by the game on each computer
+scores.db
+scores.db-journal
+
 # Personal notes
 src/f1_game/base/Victor.txt
 src/f1/Victor.txt

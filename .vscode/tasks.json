@@ -1,16 +1,17 @@
 {
     // Ctrl+Shift+B = compile everything with javac and start the main menu.
     // Works even if the Java extension gets confused, because it doesn't use it.
-    // -cp "out:lib/*" = our classes + every .jar in lib (the PostgreSQL driver for DB_Main).
+    // -cp "out:lib/*" = our classes + every .jar in lib (the PostgreSQL + SQLite drivers for DB_Main).
+    // --enable-native-access=ALL-UNNAMED = the SQLite driver may load its native library (no warning).
     // Windows separates the classpath with ";" instead of ":", so it has its own command.
     "version": "2.0.0",
     "tasks": [
         {
             "label": "Run Mini Games (javac)",
             "type": "shell",
-            "command": "javac -d out -cp \"lib/*\" src/common/*.java src/f1/*.java src/battletanks/*.java && java -cp \"out:lib/*\" common.Main",
+            "command": "javac -d out -cp \"lib/*\" src/common/*.java src/f1/*.java src/battletanks/*.java && java --enable-native-access=ALL-UNNAMED -cp \"out:lib/*\" common.Main",
             "windows": {
-                "command": "javac -d out -cp \"lib/*\" src/common/*.java src/f1/*.java src/battletanks/*.java && java -cp \"out;lib/*\" common.Main",
+                "command": "javac -d out -cp \"lib/*\" src/common/*.java src/f1/*.java src/battletanks/*.java && java --enable-native-access=ALL-UNNAMED -cp \"out;lib/*\" common.Main",
                 "options": {
                     "cwd": "${workspaceFolder}",
                     "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }

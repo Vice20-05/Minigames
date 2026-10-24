@@ -38,6 +38,7 @@ public class ScoreSubmitter {
     private enum SaveState { TYPING, SAVING, SAVED, FAILED }
 
     private SaveState state = SaveState.SAVED; // nothing to do until the first start()
+    private volatile boolean savedOffline; // true = the last save went to scores.db (no internet)
     private int score;                   // the score of the run that just ended
     private String name = "";            // what is typed right now
     private String lastName = "";        // the name used last time (only while the game is open)
@@ -118,7 +119,10 @@ public class ScoreSubmitter {
         new SwingWorker<Boolean, Void>() {
             @Override
             protected Boolean doInBackground() {
-                return DB_Main.saveScore(DB_Main.F1, nameToSave, scoreToSave);
+                // DB_Main saves to Supabase when online, otherwise to scores.db on this computer
+                boolean saved = DB_Main.saveScore(DB_Main.F1, nameToSave, scoreToSave);
+                savedOffline = !DB_Main.isOnline();
+                return saved;
             }
 
             @Override
@@ -164,7 +168,7 @@ public class ScoreSubmitter {
             drawCentered(g, "Saving...", y);
         } else if (state == SaveState.SAVED) {
             g.setColor(Color.GREEN);
-            drawCentered(g, "Saved!", y);
+            drawCentered(g, savedOffline ? "Saved on this computer (offline)" : "Saved!", y);
         } else if (state == SaveState.FAILED) {
             g.setColor(Color.ORANGE);
             drawCentered(g, "Couldn't save score", y);

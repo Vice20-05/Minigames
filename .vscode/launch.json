@@ -6,14 +6,16 @@
             "name": "Launch Main Menu",
             "request": "launch",
             "mainClass": "common.Main",
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "vmArgs": "--enable-native-access=ALL-UNNAMED"
         },
         {
             "type": "java",
             "name": "Launch F1 game only",
             "request": "launch",
             "mainClass": "f1.f1Main",
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "vmArgs": "--enable-native-access=ALL-UNNAMED"
         }
     ]
 }
