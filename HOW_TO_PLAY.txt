@@ -27,5 +27,3 @@ SCORES
     Online, scores go to the global leaderboard by themselves.
     Without internet they are saved on this computer, in the ".minigames" folder
     in your home folder (with your music setting).
-
-Music: all songs are CC0 (public domain), from OpenGameArt.org.
