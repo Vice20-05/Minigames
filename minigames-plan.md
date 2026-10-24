@@ -1,39 +1,38 @@
 # Mini-Games Project – Planning Notes
 
 Two small 2D games in Java Swing, launched from one main window.
-Status: planning phase, no code yet.
-
+Status: planning phase; no code yet.
 
 ## Build order
-1. Game logic / object model first (cars, tanks, bullets, walls, collisions )
+1. Game logic / object model first (cars, tanks, bullets, walls, collisions)
 2. Rendering with placeholders
 3. Database last (it's small)
-    4.Art , the phase of overwriting the placeholders 
+4. Art, the phase of overwriting the placeholders
 
 ---
 
 ## Game 1 – Top-down traffic racer (single player)
 Teacher-approved: 2D only, top-down view, no 3D.
 
-**Idea:** you drive through traffic as fast as you dare and score points for risky driving (inspired by traffic runs in BeamNG / Assetto Corsa).
+**Idea:** drive through traffic as fast as you dare and score points for risky driving (inspired by traffic runs in BeamNG / Assetto Corsa).
 
 **How it works**
 - The car stays near the bottom of the screen; the road scrolls underneath to create the feeling of speed.
-- Left/right to change lanes, player controls their own speed (throttle/brake).
-- Traffic is **not AI** – cars just spawn in random lanes on a pattern and move down the screen
-    -The player using W accelerates the car, s is for brake 
+- Left/right changes lanes; the player controls their own speed (throttle/brake).
+- Traffic is **not AI** – cars simply spawn in random lanes on a pattern and move down the screen.
+- The player uses **W** to accelerate and **S** to brake.
 
 **Scoring**
-- Points over time, multiplied by speed (e.g. 1.5x at 100 km/h, 2x at 200 km/h, capped).
-- Bonus for **near misses**: a slightly bigger invisible box around the player's car. Traffic touches the big box but not the car = near miss. Touches the car = crash.
+- Points over time, multiplied by speed (for example, 1.5× at 100 km/h, 2× at 200 km/h, capped).
+- Bonus for **near misses**: a slightly larger invisible box surrounds the player's car. If traffic touches the big box but not the car, it counts as a near miss; if it touches the car, it's a crash.
 - Bonus for overtakes.
 
 **Difficulty**
 - One game timer drives everything (no separate timers).
-- Phases: traffic slowly gets denser (e.g. every ~30s), and after ~2 min roadblocks / potholes start appearing.
+- Phases: traffic slowly gets denser (for example, every ~30 seconds), and after ~2 minutes roadblocks / potholes start appearing.
 - Difficulty **caps** at a maximum so it never becomes a wall of cars.
 - Spawning always leaves **at least one open lane**, so the game is always beatable.
-- Since the player controls speed, they can slow down to get through dense traffic.
+- Because the player controls speed, they can slow down to get through dense traffic.
 
 **Stretch goal (only if we have time):** unlockable cars, from slow ones up to a Koenigsegg Jesko Absolut.
 
@@ -46,7 +45,7 @@ Teacher-approved: 2D only, top-down view, no 3D.
 - Player 2: Arrow keys to move, Right Shift to shoot
 
 **Build phase (inspired by "Make Way")**
-- At the start of a round each player gets a random set of predefined objects (walls etc.).
+- At the start of a round, each player gets a random set of predefined objects (walls, etc.).
 - They place them anywhere in the arena. Overlapping is not allowed.
 
 **Combat**
@@ -57,7 +56,7 @@ Teacher-approved: 2D only, top-down view, no 3D.
 **Destructible walls**
 - A wall looks like one solid rectangle, but internally it's **3 small blocks** (like 3 Minecraft blocks side by side).
 - Each block has its own health and shrinks a bit when hit, then disappears – so the hole opens exactly where the bullet hit.
-- Any bullet damages any wall (exept the main walls whehre the tanks live), including your own.
+- Any bullet damages any wall (except the main walls where the tanks live), including your own.
 - This stops players from walling themselves in forever (turtling).
 - Rejected: a "shoot through walls" ability – too overpowered.
 

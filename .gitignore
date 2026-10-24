@@ -1,3 +1,9 @@
 # Compiled Java files (made by javac, no need to push them)
 out/
 *.class
+
+# Personal guide, keep it local
+src/f1_game/base/Victor.txt
+
+# Database password (copy config.example.properties to make your own)
+config.properties
