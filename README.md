@@ -74,7 +74,17 @@ A local 2-player tank fight on a destructible battlefield.
 - Scores are saved online in **Supabase** (PostgreSQL)
 - The Scores screen shows both leaderboards side by side: player name and score, highest first (top 10)
 - The game checks the connection at startup. The menu shows **Online** or **Offline**
-- If there's no internet connection, the games still work and scores are saved in a local SQLite database (`scores.db`). The Scores screen then shows those local scores with an **Offline** label (offline scores are not uploaded later)
+- If there's no internet connection, the games still work and scores are saved in a local SQLite database (`scores.db` in the `.minigames` folder in your home folder). The Scores screen then shows those local scores with an **Offline** label (offline scores are not uploaded later)
+- The built game connects by itself: `build.sh` puts the login of a **limited** database user inside the jar (it can only read and save scores, see `docs/supabase_game_user.sql`)
+
+---
+
+## 🎵 Music
+
+- Each screen has its own song: the menu, F1 Racing and Battle Tanks
+- The **Music** volume slider and the **Mute** button are on the main menu and count for all three
+- The setting is remembered (`settings.properties` in the `.minigames` folder)
+- All songs are CC0 (public domain) from OpenGameArt, see `resources/music/CREDITS.txt
 
 ---
 
@@ -87,18 +97,38 @@ Minigames/
 │   ├── battletanks/     # Tank Battle game
 │   └── common/          # Main menu, scores screen, database
 ├── resources/
-│   └── textures/
-│       ├── f1/          # F1 images
-│       └── battletanks/ # Tank Battle images
+│   ├── textures/
+│   │   ├── f1/          # F1 images
+│   │   └── battletanks/ # Tank Battle images
+│   └── music/           # Menu, F1 and Tank songs (WAV) + CREDITS.txt
 ├── lib/                 # PostgreSQL + SQLite JDBC drivers
-├── docs/screenshots/    # Images used in this README
+├── docs/
+│   ├── screenshots/     # Images used in this README
+│   └── supabase_game_user.sql  # the limited database user for builds
+├── build.sh             # makes the player zips (Windows, Linux, Mac)
+├── HOW_TO_PLAY.txt      # goes into every zip
 ├── config.example.properties
 └── README.md
 ```
 
 ---
 
-## ⚙️ Setup
+## 📦 Play (no setup)
+
+Download the zip for your computer from the GitHub Releases page, unzip it and double-click:
+
+| Computer | Zip | Start |
+|---|---|---|
+| Windows | `Minigames-windows-x64.zip` | `Minigames.bat` |
+| Linux | `Minigames-linux-x64.zip` | `Minigames.sh` |
+| Mac (Apple Silicon) | `Minigames-mac-arm64.zip` | `Minigames.app` |
+| Mac (Intel) | `Minigames-mac-x64.zip` | `Minigames.app` |
+
+Java 21 is included, nothing to install. The game connects to the online leaderboard by itself. `HOW_TO_PLAY.txt` in the zip explains the first start on a Mac.
+
+---
+
+## ⚙️ Setup (for developers)
 
 ### Requirements
 - Java 21 or newer
@@ -125,7 +155,15 @@ db.password=<password>
 ### 3. Run it
 Open the folder in VS Code and run **Launch Main Menu** (or press `Ctrl+Shift+B`).
 
-The main menu has four options: **F1 Game**, **Battle Tanks**, **Scores** and **Quit**.
+The main menu has four options: **F1 Game**, **Battle Tanks**, **Scores** and **Quit**, plus the music volume and mute button.
+
+### 4. Build the player zips
+```bash
+./build.sh
+```
+It makes `dist/Minigames.jar` and one zip per computer type with Java 21 included (the Java runtimes are downloaded once into `build/jre`). On Windows, run it in Git Bash. `build/` and `dist/` are in `.gitignore`: upload the zips as a GitHub Release, don't commit them.
+
+If `config.properties` exists, a copy goes inside the jar so players are online without any setup. Anyone can unzip a jar, so for builds you share, `config.properties` must use the **limited game user** from `docs/supabase_game_user.sql`, never the `postgres` admin password (`build.sh` warns you).
 
 ---
 

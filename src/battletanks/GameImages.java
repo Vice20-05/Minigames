@@ -8,17 +8,22 @@ import java.util.ArrayList;
 import java.util.Random;
 import javax.imageio.ImageIO;
 
+import common.Resources;
+
 // Loads and stores all the pictures. If a picture cannot be loaded
 // its getter returns null and the GamePanel draws a simple shape instead.
 public class GameImages {
 
     private static final String[] BACKGROUND_PATHS = {
-        "/textures/battletanks/bg1.png",
-        "/textures/battletanks/bg2.png",
-        "/textures/battletanks/bg3.png",
-        "/textures/battletanks/bg4.png",
-        "/textures/battletanks/bg5.png"
+        "resources/textures/battletanks/bg1.png",
+        "resources/textures/battletanks/bg2.png",
+        "resources/textures/battletanks/bg3.png",
+        "resources/textures/battletanks/bg4.png",
+        "resources/textures/battletanks/bg5.png"
     };
+
+    // Used when none of the backgrounds above can be loaded.
+    private static final String FALLBACK_BACKGROUND_PATH = "resources/textures/battletanks/bg.png";
 
     private volatile Image currentBackgroundImage;
     private volatile Image playerOneTankImage;
@@ -29,6 +34,7 @@ public class GameImages {
     private volatile Image heartImage;
 
     private volatile Image[] backgroundImages;
+    private volatile Image fallbackBackgroundImage;
 
     private final Random random;
 
@@ -39,12 +45,12 @@ public class GameImages {
 
     // Loads the pictures from the resources folder.
     public void loadAll() {
-        playerOneTankImage = loadImage("/textures/battletanks/tank_blue.png");
-        playerTwoTankImage = loadImage("/textures/battletanks/tank_bigRed.png");
-        brickWallImage = loadImage("/textures/battletanks/barrelGreen_side.png");
-        steelWallImage = loadImage("/textures/battletanks/barrelRust_side.png");
-        bulletImage = loadImage("/textures/battletanks/bulletDark1_outline.png");
-        heartImage = loadImage("/textures/battletanks/explosion2.png");
+        playerOneTankImage = loadImage("resources/textures/battletanks/tank_blue.png");
+        playerTwoTankImage = loadImage("resources/textures/battletanks/tank_bigRed.png");
+        brickWallImage = loadImage("resources/textures/battletanks/barrelGreen_side.png");
+        steelWallImage = loadImage("resources/textures/battletanks/barrelRust_side.png");
+        bulletImage = loadImage("resources/textures/battletanks/bulletDark1_outline.png");
+        heartImage = loadImage("resources/textures/battletanks/explosion2.png");
 
         Image[] loadedBackgrounds = new Image[BACKGROUND_PATHS.length];
 
@@ -57,6 +63,7 @@ public class GameImages {
         }
 
         backgroundImages = loadedBackgrounds;
+        fallbackBackgroundImage = loadImage(FALLBACK_BACKGROUND_PATH);
         pickRandomBackground();
     }
 
@@ -72,7 +79,7 @@ public class GameImages {
         }
 
         if (usableBackgrounds.isEmpty()) {
-            currentBackgroundImage = null;
+            currentBackgroundImage = fallbackBackgroundImage; // null if bg.png is missing too
             return;
         }
 
@@ -82,7 +89,8 @@ public class GameImages {
 
     // Returns null when the picture is missing or broken.
     private Image loadImage(String imagePath) {
-        try (InputStream input = GameImages.class.getResourceAsStream(imagePath)) {
+        // Resources finds the picture inside Minigames.jar, or in the project folder.
+        try (InputStream input = Resources.open(imagePath)) {
             if (input == null) {
                 System.out.println("Image not found: " + imagePath);
                 return null;
